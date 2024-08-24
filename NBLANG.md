@@ -1,4 +1,4 @@
-# NG-LANG
+# NB-LANG
 "Not-Bad language"
 
 An opionated theoretical language
