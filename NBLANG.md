@@ -159,9 +159,10 @@ fn add(a: int, b: int): int { // Scope, with access to `a` and `b`
 }
 
 ```
+In addition, each scope defined variable cannot be used outside the scope normally.
 
 ```c
-In addition, each scope defined variable cannot be used outside the scope normally.
+
 
 var a = 5
 var b = 10
@@ -859,30 +860,31 @@ There are various built in functions and methods that can be used.
 
 #### Console
 
-- `print()` // Prints to the console
-- `println()` // Prints to the console with a newline at the end
-- `read()` // Returns a string
+- `print()`  Prints to the console
+- `println()`  Prints to the console with a newline at the end
+- `read()`  Returns a string
 
 #### Math
 
-- `abs()` // Absolute value
-- `sqrt()` // Square root
-- `ceil()` // Rounds up
-- `floor()` // Rounds down
-- `round()` // Rounds to nearest integer
-- `rand()` // Returns a random number
-- `rand(a, b)` // Returns a random number in the range [a, b]
-- `rand(int)` // Changeable for int32, int64, etc. Generates a random number for the specified type
+- `abs()`  Absolute value
+- `sqrt()`  Square root
+- `ceil()`  Rounds up
+- `floor()`  Rounds down
+- `round()`  Rounds to nearest integer
+- `rand()`  Returns a random number
+- `rand(a, b)`  Returns a random number in the range [a, b]
+- `rand(int)`  Changeable for int32, int64, etc. Generates a random number for the specified type
 
 #### String
 
-- `len()` // Returns the length of a string
-- `lower()` // Converts a string to lowercase
-- `upper()` // Converts a string to uppercase
-- `trim()` // Removes leading and trailing whitespace
-- `remove()` // Removes a substring from a string
-- `replace()` // Replaces a substring in a string
-- `splitby(x: string)` // Returns an array, the string is split by the specified string. If there are no matches, then the string is returned within the array
+- `$(x: any)`  String concatenation
+- `len()`  Returns the length of a string
+- `lower()`  Converts a string to lowercase
+- `upper()`  Converts a string to uppercase
+- `trim()`  Removes leading and trailing whitespace
+- `remove()`  Removes a substring from a string
+- `replace()`  Replaces a substring in a string
+- `splitby(x: string)`  Returns an array, the string is split by the specified string. If there are no matches, then the string is returned within the array
 
 ### Running
 
