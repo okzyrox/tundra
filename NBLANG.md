@@ -877,7 +877,7 @@ There are various built in functions and methods that can be used.
 
 #### String
 
-- `$(x: any)`  String concatenation
+- `$(x: any)`  String conversion
 - `len()`  Returns the length of a string
 - `lower()`  Converts a string to lowercase
 - `upper()`  Converts a string to uppercase
