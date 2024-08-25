@@ -39,17 +39,12 @@ The standard keywords list.
 - `pub`
 - `priv`
 
-Functions can also be defined similar to languages such as C or c++:
 
-```c
-fn add(a: int, b: int): int {
-    return a + b
-}
+Standard values:
 
-int sub(a: int, b: int) { // Automatically becomes: `fn sub(a: int, b: int): int { return a - b }`
-    return a - b
-}
-```
+- `true`
+- `false`
+- `nil`
 
 ### Variables
 
@@ -272,6 +267,14 @@ and..
 - `>=`
 - `<=`
 
+
+#### Other Operators
+
+- `&` (string concatenation)
+- `&&` (bitwise and)
+- `||` (bitwise or)
+- `!!` (bitwise not)
+
 Operators are often performed in `if` statements, and can be used in other places as well.
 
 ```c
@@ -279,8 +282,7 @@ var a = 5
 var b = 10
 if (a > b) {
     println("a > b")
-} 
-else if (a < b) {
+} else if (a < b) {
     println("a < b")
 } else {
     println("a == b")
@@ -298,12 +300,12 @@ var c: int
 if (a == string and b == int) { // Evals to: `typeof(a) == string and typeof(b) == int`
     println("a is a string")
     println("b is an int")
-} elseif (a == int and b == string) { // Evals to: `typeof(a) == int and typeof(b) == string`
+} else if (a == int and b == string) { // Evals to: `typeof(a) == int and typeof(b) == string`
     println("a is an int")
     println("b is a string")
-} elseif (a == int and b == int) { // Evals to: `typeof(a) == int and typeof(b) == int`
+} else if (a == int and b == int) { // Evals to: `typeof(a) == int and typeof(b) == int`
     println("They are both integers")
-} elseif (a == int or b == int) { // Evals to: `typeof(a) == int or typeof(b) == int`
+} else if (a == int or b == int) { // Evals to: `typeof(a) == int or typeof(b) == int`
     println("One of them is an integer")
 } else {
     println("I don't know what this is")
@@ -392,6 +394,121 @@ goodbye() // >>> Goodbye!
 
 ```
 
+### Strings/String concatenation
+
+Strings can be concatenated, either using formatting with `$` or using the `&` operator.
+
+
+### Functions
+
+Functions are defined `scripts` of code that can be run by calling them.
+
+There is no naming clause for functions. In addition, a function with the `nil` return type does not need to return anything.
+
+```go
+
+fn cube(x: int): int {
+    return x * x * x
+}
+
+println(cube(5)) // >>> 125
+
+```
+
+`nil` function:
+
+```go
+
+fn say_hello() { // Equivalent to: fn say_hello(): nil {}
+    println("Hello, World!")
+}
+
+say_hello() // >>> Hello, World!
+
+var x = say_hello()
+println(x) // >>> nil
+println(say_hello()) // >>> nil
+
+```
+
+In addition, while usually functions names, like variable names, have to be unique. Functions can have repeated names aslong as they have different arguments.
+
+```go
+
+fn add(a: int, b: int): int {
+    return a + b
+}
+
+fn add(a: string, b: string): string {
+    return $"{a}{b}"
+}
+
+println(add(5, 10)) // >>> 15
+println(add("hello", "world")) // >>> helloworld
+println(add(5, "10")) // Error: no function called `add` with arguments `int` and `string`
+
+```
+
+If you want a function that can be called regardless of argument types then:
+
+```go
+
+fn say(output: any) {
+    if ($output != nil) {
+        println($output) // String conversion
+    }
+}
+
+say("Hello, World!") // >>> Hello, World!
+say(5) // >>> "5"
+say(nil) // >>> "nil" // Nil still has a string representation; the function checks if it can be represented as a string
+say(true) // >>> "true"
+
+```
+
+You also dont have to repeat type in function arguments when representing many arguments
+
+```go
+
+fn say(a, b: string) {
+    println($"{a} {b}")
+}
+
+say("hello", "world") // >>> hello world
+say("hello", 10) // Error: no function called `say` with arguments `string` and `int` | function called with incorrect argument types. Expected: `string`, `string`. got: `int`, `string`
+
+```
+
+Functions can also be defined similar to languages such as C or c++:
+
+```go
+fn add(a: int, b: int): int {
+    return a + b
+}
+
+int sub(a: int, b: int) { // Automatically becomes: `fn sub(a: int, b: int): int { return a - b }`
+    return a - b
+}
+```
+
+For custom types, enums, and other things, you can create `symbol functions`
+
+Symbol functions can only have 1 argument, being the object that they are called on.
+
+```go
+
+// Assuming a type called MyType, with a string field called name
+
+fn '$'(x: MyType): string { // single quotes are used for symbol functions
+    return x.name
+}
+
+var john = MyType { name: "John" }
+
+println($john) // >>> "John"
+
+
+```
 
 ### Classes
 
@@ -400,7 +517,7 @@ Classes are a way of representing objects or structures of groups of data or fun
 
 To define a class, simply use:
 
-```
+```go
 
 class Person {}
 
@@ -409,7 +526,7 @@ class Person {}
 Adding fields to the class is just as simple, however:
 - Each field needs a dedicated type definition
 
-```
+```go
 
 class Person {
     var name: string
@@ -419,7 +536,7 @@ class Person {
 
 Classes can be constructed using brackets, but can have dedicated constructor methods as well.
 
-```
+```go
 
 class Person {
     var name: string
@@ -437,7 +554,7 @@ Also, notice how `var` is annotated after the fields? This is done to allow for 
 For instance:
 
 
-```
+```go
 
 class Person {
     id: int
@@ -459,7 +576,7 @@ In addition, specified fields can be made optional or private.
 
 #### Private fields
 
-```
+```go
 
 class Person {
     var name: string
@@ -472,7 +589,7 @@ fn new_person(name: string, age: int): Person {
 
 var john = new_person("John", 30)
 
-println($"{john.name}) // >>> John
+println($"{john.name}") // >>> John
 println($"{john.age} years old") // Error: field `age` is private
 
 
@@ -484,7 +601,7 @@ println($"{john.age} years old") // Error: field `age` is private
 
 Optional fields are fields that can be left out, and are set to `nil` by default.
 
-```
+```go
 
 class Person {
     var name: string
@@ -568,6 +685,138 @@ var john = Employee { name: "John", age: 30, years_worked: 5 }
 john.greet() // >>> Hello, John!
 john.worked() // >>> John worked for 5 years!
 
+if (typeof(john) == Employee) { // typeof works with classes too
+    println("John is an employee")
+}
+
 
 ```
 
+
+
+
+### Loops
+
+Loops can be used in NB.
+
+
+#### For loop
+
+```go
+
+for (var i in 0..10) do { // Variable designed as a loop range of integers
+    println(i)
+} // >>> 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+
+
+// Can also be done over arrays or tables
+
+var strings = [
+    "Hello",
+    "World",
+    "!"
+]
+
+
+for (var str in strings) do {
+    println(str) // >>> Hello, World, !
+}
+
+var users = {
+    john: { name: "John", age: 30 }, // Note the use of `:` to separate the key and value
+    jack: { name: "Jack", age: 31 } // In addition, the key is a string type by default, but can be changed
+}
+
+for (var username, user in users) do { // Both fields of table specified
+    println($"{username}: {user.name} is {user.age} years old") // >>> john: John is 30 years old ; jack: Jack is 31 years old
+}
+
+
+```
+
+
+#### While Loop
+
+While loops are similar to for loops, but they can only be used inside a `while` block and are often good for iterating a unknown amount of times.
+
+```c
+
+var running = true
+var i = 0
+
+while (running) do {
+    println(i)
+
+    if (i == 25) {
+        running = false
+    }
+
+    i += 1
+} // >>> 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, END
+
+
+```
+
+
+The `do` part of the while loop doesnt necessarily have to be a scope, but could be a function call instead.
+
+```c
+
+var i = 1
+
+fn hello() {
+    println($"Hello! x{i}")
+    i += 1
+}
+
+while (i < 5) do hello() // >>> Hello! x1, Hello! x2, Hello! x3, Hello! x4, Hello! x5
+// Note how the brackets are not included, this is optional
+
+```
+
+### Built-in functions/methods
+
+There are various built in functions and methods that can be used.
+
+#### Console
+
+- `print()` // Prints to the console
+- `println()` // Prints to the console with a newline at the end
+- `read()` // Returns a string
+
+#### Math
+
+- `abs()` // Absolute value
+- `sqrt()` // Square root
+- `ceil()` // Rounds up
+- `floor()` // Rounds down
+- `round()` // Rounds to nearest integer
+- `rand()` // Returns a random number
+- `rand(a, b)` // Returns a random number in the range [a, b]
+- `rand(int)` // Changeable for int32, int64, etc. Generates a random number for the specified type
+
+#### String
+
+- `len()` // Returns the length of a string
+- `lower()` // Converts a string to lowercase
+- `upper()` // Converts a string to uppercase
+- `trim()` // Removes leading and trailing whitespace
+- `remove()` // Removes a substring from a string
+- `replace()` // Replaces a substring in a string
+- `splitby(x: string)` // Returns an array, the string is split by the specified string. If there are no matches, then the string is returned within the array
+
+### Running
+
+In order to run it, it needs a `main` function defined in the `main` module.
+
+This can be done by defining the modulename code in the main script, and then creating a `main` function.
+
+```cpp
+
+@module main // This is optional depending on whether the filename is called `main.nb`. It is not required if the filename is `main.nb`
+
+fn main() {
+    println("Hello, World!")
+}
+
+```
