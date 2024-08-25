@@ -231,12 +231,12 @@ Standard basic types available by default are:
 
 - `char`
 - `string`
-- `int` (prefixable; e.g.: `int64`, `int32`, `int8`)
-- `float` (prefixable; e.g.: `float64`, `float32`)
+- `int` (prefixable; e.g.: `int64`, `int32`, `int8`, default: int64)
+- `float` (prefixable; e.g.: `float64`, `float32`, default: float64)
 - `bool`
 - `array`
 - `table`
-- `nil` (in other words: `None`, `null`, `void`, `nothing`, `undefined`. Unassigned variables have this by default)
+- `nil` a type and a value (in other words: `None`, `null`, `void`, `nothing`, `undefined`. Unassigned variables have this by default)
 
 ### Operators
 
@@ -326,14 +326,19 @@ Modules are essentially groups of files, that can all be accessed by importing t
 consider this file structure:
 
 -> main.nb
+
 -> hello.nb
 
 VS
 
 -> main.nb
+
 -> greetings/
+
     -> hello.nb
+
     -> goodbye.nb
+
     -> mod.nb
 
 
@@ -580,7 +585,7 @@ In addition, specified fields can be made optional or private.
 
 class Person {
     var name: string
-    private var age: int
+    priv var age: int
 }
 
 fn new_person(name: string, age: int): Person {
@@ -648,11 +653,11 @@ fn Person.set_age(person: Person, age: int) { // Extra parameters are passed aft
 var john = Person.new("John", 30)
 
 john.greet() // >>> Hello, John!
-john.get_age() // >>> 30
+println(john.get_age()) // >>> 30
 
 john.set_age(31)
 
-john.get_age() // >>> 31
+println(john.get_age()) // >>> 31
 
 ```
 
