@@ -7,3 +7,16 @@ read the spec at: `./NBLANG.md`
 idk MAYBE ill make a parser/interpreter for it
 
 MAYBE
+
+## How to run?
+
+#### Requirements:
+
+- nim 2.0.8
+
+```bat
+
+cd interpreter
+nim c -r src/main.nim
+```
+will run `hello.noba`

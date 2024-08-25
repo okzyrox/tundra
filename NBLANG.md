@@ -3,7 +3,7 @@
 
 An opionated theoretical language
 
-File suffix: `.nb`, `.nbs`
+File suffix: `.nb`, `.nbs`, `.noba`
 
 
 ## Structure
