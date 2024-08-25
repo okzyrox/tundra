@@ -699,6 +699,80 @@ if (typeof(john) == Employee) { // typeof works with classes too
 
 
 
+### Error catching
+
+
+Errors can be caught using a standard `try` and `catch` syntax, each with scopes.
+
+```go
+
+
+try {
+    println("Hello, World!")
+    var a = 5
+    a = a + "hello" // cannot concatenate int and string
+} catch (e: StdError) { // `StdError` is a built-in error type, used for all standard issue errors.
+    println($"Error: {e}") // >>> Error: cannot concatenate int and string
+}
+
+
+
+// Using functions
+
+fn do_something(a: string) {
+    a = a + 1 // cannot concatenate string and int
+}
+
+try do_something("hello") catch (e: StdError) {
+    println($"Error: {e}") // >>> Error: cannot concatenate string and ints
+}
+
+```
+
+Custom errors can be made too.
+
+```go
+
+const class MyError extends StdError {
+    msg: "Something went wrong"
+}
+
+try {
+    throw MyError()
+} catch (e: MyError) {
+    println($"Error: {e}") // >>> Error: Something went wrong
+}
+
+
+// Messages can also be specified in the `throw` part
+
+try {
+    throw MyError { msg: "Something maybe went wrong" }
+} catch (e: MyError) {
+    println($"Error: {e}") // >>> Error: Something maybe went wrong
+}
+
+```
+
+In addition, different error types can be chained. While `StdError` covers all errors, you may want to use more specific error types for debugging.
+
+```go
+
+try {
+    var a = 0
+    a = a / 0 // throws: MathError -- MathError.DivideByZero
+
+    var b = "hello"
+    b = b / 2 // throws: OperatorError
+} catch (e: MathError.DivideByZero) {
+    println("Tried to divide by zero")
+} catch (e: OperatorError) {
+    println("Tried to use invalid operator on `string`")
+} catch (e: StdError) { // Good to have a `StdError` catch at the end for any extra errors that arent prepared for.
+    println($"Error: {e}")
+}
+```
+
 
 ### Loops
 
