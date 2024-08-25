@@ -468,7 +468,7 @@ In addition, specified fields can be made optional or private.
 
 class Person {
     var name: string
-    private var age: int
+    priv var age: int
 }
 
 fn new_person(name: string, age: int): Person {
@@ -536,11 +536,11 @@ fn Person.set_age(person: Person, age: int) { // Extra parameters are passed aft
 var john = Person.new("John", 30)
 
 john.greet() // >>> Hello, John!
-john.get_age() // >>> 30
+println(john.get_age()) // >>> 30
 
 john.set_age(31)
 
-john.get_age() // >>> 31
+println(john.get_age()) // >>> 31
 
 ```
 
