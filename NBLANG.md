@@ -236,12 +236,12 @@ Standard basic types available by default are:
 
 - `char`
 - `string`
-- `int` (prefixable; e.g.: `int64`, `int32`, `int8`)
-- `float` (prefixable; e.g.: `float64`, `float32`)
+- `int` (prefixable; e.g.: `int64`, `int32`, `int8`, default: int64)
+- `float` (prefixable; e.g.: `float64`, `float32`, default: float64)
 - `bool`
 - `array`
 - `table`
-- `nil` (in other words: `None`, `null`, `void`, `nothing`, `undefined`. Unassigned variables have this by default)
+- `nil` a type and a value (in other words: `None`, `null`, `void`, `nothing`, `undefined`. Unassigned variables have this by default)
 
 ### Operators
 
@@ -324,14 +324,19 @@ Modules are essentially groups of files, that can all be accessed by importing t
 consider this file structure:
 
 -> main.nb
+
 -> hello.nb
 
 VS
 
 -> main.nb
+
 -> greetings/
+
     -> hello.nb
+
     -> goodbye.nb
+
     -> mod.nb
 
 
