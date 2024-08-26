@@ -12,127 +12,158 @@ type Parser = object
 proc newParser*(tokens: seq[Token]): Parser =
   Parser(tokens: tokens, current: 0)
 
-proc peek(self: Parser): Token =
-  self.tokens[self.current]
+proc peek(parser: Parser): Token =
+  parser.tokens[parser.current]
 
-proc advance(self: var Parser): Token =
-  result = self.tokens[self.current]
-  inc self.current
+proc advance(parser: var Parser): Token =
+  result = parser.tokens[parser.current]
+  inc parser.current
 
-proc match(self: var Parser, kinds: varargs[TokenKind]): bool =
-  if self.peek().kind in kinds:
-    discard self.advance()
+proc match(parser: var Parser, kinds: varargs[TokenKind]): bool =
+  if parser.peek().kind in kinds:
+    discard parser.advance()
     return true
   return false
 
-proc parseExpression(self: var Parser): Node
-proc parseStatement(self: var Parser): Node
+proc atEnd(parser: Parser): bool =
+  parser.peek().kind == tkEOF
 
-proc parsePrimary(self: var Parser): Node =
-  if self.match(tkInt):
-    return Node(kind: nkLiteral, literalValue: self.tokens[self.current -
+proc check(parser: Parser, kind: TokenKind): bool =
+  if parser.atEnd(): return false
+  parser.peek().kind == kind
+
+proc consume(parser: var Parser, kind: TokenKind, message: string): Token =
+  if parser.check(kind): return parser.advance()
+  raise newException(ValueError, message & " Got " & $parser.peek().kind & " instead.")
+
+proc parseExpression(parser: var Parser): Node
+proc parseStatement(parser: var Parser): Node
+
+proc parseCall(parser: var Parser, callee: Node): Node =
+  var arguments: seq[Node] = @[]
+  if not parser.check(tkBracketClose):
+    arguments.add(parser.parseExpression())
+    while parser.match(tkSymbol) and parser.tokens[parser.current - 1].lexeme == ",":
+      arguments.add(parser.parseExpression())
+  
+  discard parser.consume(tkBracketClose, "Expected ')' after arguments.")
+  return Node(kind: nkCall, callee: callee, arguments: arguments)
+
+
+proc parsePrimary(parser: var Parser): Node =
+  if parser.match(tkInt):
+    return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current -
         1].lexeme, literalType: "int")
-  elif self.match(tkFloat):
-    return Node(kind: nkLiteral, literalValue: self.tokens[self.current -
+  elif parser.match(tkFloat):
+    return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current -
         1].lexeme, literalType: "float")
-  elif self.match(tkString):
-    return Node(kind: nkLiteral, literalValue: self.tokens[self.current -
+  elif parser.match(tkString):
+    return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current -
         1].lexeme, literalType: "string")
-  elif self.match(tkIdent):
-    return Node(kind: nkIdentifier, identifierName: self.tokens[self.current - 1].lexeme)
+  elif parser.match(tkIdent):
+    let identifier = Node(kind: nkIdentifier, identifierName: parser.tokens[parser.current - 1].lexeme)
+    if parser.match(tkBracketOpen):
+      return parser.parseCall(identifier)
+    return identifier
   else:
     return Node(kind: nkLiteral, literalValue: "ERROR", literalType: "error")
 
-proc parseUnary(self: var Parser): Node =
-  if self.match(tkSymbol): # Assuming '-' and '!' are tokenized as symbols
-    let operator = self.tokens[self.current - 1].lexeme
-    let right = self.parseUnary()
+proc parseUnary(parser: var Parser): Node =
+  if parser.match(tkSymbol): # Assuming '-' and '!' are tokenized as symbols
+    let operator = parser.tokens[parser.current - 1].lexeme
+    let right = parser.parseUnary()
     return Node(kind: nkUnaryExpr, operand: right, unaryOperator: operator)
-  return self.parsePrimary()
+  return parser.parsePrimary()
 
-proc parseFactor(self: var Parser): Node =
-  var expr = self.parseUnary()
-  while self.match(tkSymbol): # Assuming '*' and '/' are tokenized as symbols
-    let operator = self.tokens[self.current - 1].lexeme
-    let right = self.parseUnary()
+proc parseFactor(parser: var Parser): Node =
+  var expr = parser.parseUnary()
+  while parser.match(tkSymbol): # Assuming '*' and '/' are tokenized as symbols
+    let operator = parser.tokens[parser.current - 1].lexeme
+    let right = parser.parseUnary()
     expr = Node(kind: nkBinaryExpr, left: expr, right: right,
         operator: operator)
   return expr
 
-proc parseTerm(self: var Parser): Node =
-  var expr = self.parseFactor()
-  while self.match(tkSymbol): # Assuming '+' and '-' are tokenized as symbols
-    let operator = self.tokens[self.current - 1].lexeme
-    let right = self.parseFactor()
+proc parseTerm(parser: var Parser): Node =
+  var expr = parser.parseFactor()
+  while parser.match(tkSymbol): # Assuming '+' and '-' are tokenized as symbols
+    let operator = parser.tokens[parser.current - 1].lexeme
+    let right = parser.parseFactor()
     expr = Node(kind: nkBinaryExpr, left: expr, right: right,
         operator: operator)
   return expr
 
-proc parseExpression(self: var Parser): Node =
-  self.parseTerm()
+proc parseExpression(parser: var Parser): Node =
+  parser.parseTerm()
 
-proc parseVarDecl(self: var Parser): Node =
-  discard self.advance() # cons var
-  let name = self.advance().lexeme
+proc parseVarDecl(parser: var Parser): Node =
+  discard parser.advance() # consume 'var'
+  let name = parser.consume(tkIdent, "Expected variable name.").lexeme
   var typ = ""
-  if self.match(tkSymbol): # Assuming ':' is tokenized as a symbol
-    typ = self.advance().lexeme
-  discard self.advance() # cons =
-  let value = self.parseExpression()
+  if parser.match(tkSymbol) and parser.tokens[parser.current - 1].lexeme == ":":
+    typ = parser.consume(tkIdent, "Expected type after ':'.").lexeme
+  discard parser.consume(tkEquals, "Expected '=' after variable name.")
+  let value = parser.parseExpression()
   Node(kind: nkVarDecl, name: name, typ: typ, value: value)
 
-proc parseFunctionDecl(self: var Parser): Node =
-  discard self.advance() # cons func
-  let name = self.advance().lexeme
-  discard self.advance() # cons ()
+proc parseFunctionDecl(parser: var Parser): Node =
+  discard parser.advance() # consume 'fn'
+  let name = parser.consume(tkIdent, "Expect function name.").lexeme
+  echo "Function name: ", name
+  discard parser.consume(tkBracketOpen, "Expect '(' after function name.")
   var params: seq[tuple[name: string, typ: string]] = @[]
 
-  while self.peek().kind != tkBracketClose:
-    let paramName = self.advance().lexeme
-    discard self.advance()
-    let paramType = self.advance().lexeme
-    params.add((name: paramName, typ: paramType))
-    if self.peek().kind == tkSymbol and self.peek().lexeme == ",":
-      discard self.advance()
-  discard self.advance() # cons (close)
-  discard self.advance() # cons {
-  var body: seq[Node] = @[]
-  while self.peek().kind != tkSymbol or self.peek().lexeme != "}":
-    body.add(self.parseStatement())
-  discard self.advance() # cons }
-  Node(kind: nkFunctionDecl, fnName: name, params: params, body: body)
+  if not parser.check(tkBracketClose):
+    while true:
+      if parser.atEnd() or parser.check(tkBracketClose): break
+      let paramName = parser.consume(tkIdent, "Expected parameter name.").lexeme
+      discard parser.consume(tkSymbol, "Expected ':' after parameter name.")
+      let paramType = parser.consume(tkIdent, "Expected parameter type.").lexeme
+      params.add((name: paramName, typ: paramType))
+      if not parser.match(tkSymbol): break
+      discard parser.consume(tkSymbol, "Expected ',' between parameters.")
 
-proc parseExpressionStatement(self: var Parser): Node =
-  let expr = self.parseExpression()
-  if self.peek().kind == tkSymbol and self.peek().lexeme == ";":
-    discard self.advance()
+  discard parser.consume(tkBracketClose, "Expected ')' after parameters.")
+  discard parser.consume(tkBraceOpen, "Expected '{' before function body.")
+  var body: seq[Node] = @[]
+  while not parser.check(tkBraceClose):
+    if parser.atEnd(): break
+    body.add(parser.parseStatement())
+  discard parser.consume(tkBraceClose, "Expected '}' after function body.")
+  Node(kind: nkFunctionDecl, fnName: name, params: params, body: body)
+  
+
+proc parseExpressionStatement(parser: var Parser): Node =
+  let expr = parser.parseExpression()
+  if parser.peek().kind == tkSymbol and parser.peek().lexeme == ";":
+    discard parser.advance()
   Node(kind: nkExprStmt, expr: expr)
 
-proc parseStatement(self: var Parser): Node =
-  print "Parsing statement, current token: ", self.peek().kind
-  if self.peek().kind == tkKeyword:
-    case self.peek().lexeme
+proc parseStatement(parser: var Parser): Node =
+  print "Parsing statement, current token: ", parser.peek().kind
+  if parser.peek().kind == tkKeyword:
+    case parser.peek().lexeme
     of "var":
-      return self.parseVarDecl()
+      return parser.parseVarDecl()
     of "fn":
-      return self.parseFunctionDecl()
+      return parser.parseFunctionDecl()
     else:
-      echo "Unexpected keyword: ", self.peek().lexeme
-      return Node(kind: nkExprStmt, expr: self.parseExpression())
-  elif self.peek().kind == tkIdent:
-    return self.parseExpressionStatement()
+      echo "Unexpected keyword: ", parser.peek().lexeme
+      return Node(kind: nkExprStmt, expr: parser.parseExpression())
+  elif parser.peek().kind == tkIdent:
+    return parser.parseExpressionStatement()
   else:
-    echo "Unexpected token in statement: ", self.peek().kind
-    discard self.advance()
+    echo "Unexpected token in statement: ", parser.peek().kind
+    discard parser.advance()
     return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral,
         literalValue: "ERROR", literalType: "error"))
 
-proc parse*(self: var Parser): Node =
+proc parse*(parser: var Parser): Node =
   var statements: seq[Node] = @[]
-  echo "Starting parsing, total tokens: ", self.tokens.len
-  while self.current < self.tokens.len and self.peek().kind != tkEOF:
-    print("Parsing statement at position: ", self.current)
-    let statement = self.parseStatement()
+  print "Starting parsing, total tokens: ", parser.tokens.len
+  while not parser.atEnd() and parser.peek().kind != tkEOF:
+    print("Parsing statement at position: ", parser.current)
+    let statement = parser.parseStatement()
     print "Statement parsed: ", statement.kind
     statements.add(statement)
   print "Parsing complete, total statements: ", statements.len

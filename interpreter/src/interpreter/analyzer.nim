@@ -20,79 +20,79 @@ type
 proc newSemanticAnalyzer*(): SemanticAnalyzer =
   SemanticAnalyzer(symbolTable: @[], errors: @[])
 
-proc addSymbol(self: var SemanticAnalyzer, name: string, typ: string,
+proc addSymbol(analyzer: var SemanticAnalyzer, name: string, typ: string,
     mutable: bool) =
-  self.symbolTable.add(Symbol(name: name, typ: typ, mutable: mutable))
+  analyzer.symbolTable.add(Symbol(name: name, typ: typ, mutable: mutable))
 
-proc addGlobalSymbol*(self: var SemanticAnalyzer, name: string, typ: string) =
-  self.addSymbol(name, typ, false)
+proc addGlobalSymbol*(analyzer: var SemanticAnalyzer, name: string, typ: string) =
+  analyzer.addSymbol(name, typ, false)
 
-proc findSymbol(self: SemanticAnalyzer, name: string): Option[Symbol] =
-  for symbol in self.symbolTable:
+proc findSymbol(analyzer: SemanticAnalyzer, name: string): Option[Symbol] =
+  for symbol in analyzer.symbolTable:
     if symbol.name == name:
       return some(symbol)
   return none(Symbol)
 
-proc analyzeExpression(self: var SemanticAnalyzer, node: Node): string
+proc analyzeExpression(analyzer: var SemanticAnalyzer, node: Node): string
 
-proc analyzeLiteral(self: var SemanticAnalyzer, node: Node): string =
+proc analyzeLiteral(analyzer: var SemanticAnalyzer, node: Node): string =
   node.literalType
 
-proc analyzeIdentifier(self: var SemanticAnalyzer, node: Node): string =
+proc analyzeIdentifier(analyzer: var SemanticAnalyzer, node: Node): string =
   var symbol: Option[Symbol]
   if node.kind == nkIdentifier:
-    symbol = self.findSymbol(node.identifierName)
+    symbol = analyzer.findSymbol(node.identifierName)
   else:
-    symbol = self.findSymbol(node.name)
+    symbol = analyzer.findSymbol(node.name)
   if symbol.isSome:
     return symbol.get.typ
   if node.kind == nkIdentifier:
-    self.errors.add("Undefined variable: " & node.identifierName)
+    analyzer.errors.add("Undefined variable: " & node.identifierName)
   else:
-    self.errors.add("Undefined variable: " & node.name)
+    analyzer.errors.add("Undefined variable: " & node.name)
   return "error"
 
-proc analyzeBinaryExpr(self: var SemanticAnalyzer, node: Node): string =
-  let leftType = self.analyzeExpression(node.left)
-  let rightType = self.analyzeExpression(node.right)
+proc analyzeBinaryExpr(analyzer: var SemanticAnalyzer, node: Node): string =
+  let leftType = analyzer.analyzeExpression(node.left)
+  let rightType = analyzer.analyzeExpression(node.right)
   if leftType != rightType:
-    self.errors.add("Type mismatch in binary expression")
+    analyzer.errors.add("Type mismatch in binary expression")
     return "error"
   return leftType
 
-proc analyzeUnaryExpr(self: var SemanticAnalyzer, node: Node): string =
-  self.analyzeExpression(node.operand)
+proc analyzeUnaryExpr(analyzer: var SemanticAnalyzer, node: Node): string =
+  analyzer.analyzeExpression(node.operand)
 
-proc analyzeExpression(self: var SemanticAnalyzer, node: Node): string =
+proc analyzeExpression(analyzer: var SemanticAnalyzer, node: Node): string =
   case node.kind
-  of nkLiteral: return self.analyzeLiteral(node)
-  of nkIdentifier: return self.analyzeIdentifier(node)
-  of nkBinaryExpr: return self.analyzeBinaryExpr(node)
-  of nkUnaryExpr: return self.analyzeUnaryExpr(node)
+  of nkLiteral: return analyzer.analyzeLiteral(node)
+  of nkIdentifier: return analyzer.analyzeIdentifier(node)
+  of nkBinaryExpr: return analyzer.analyzeBinaryExpr(node)
+  of nkUnaryExpr: return analyzer.analyzeUnaryExpr(node)
   else: return "error"
 
-proc analyzeVarDecl(self: var SemanticAnalyzer, node: Node) =
-  let valueType = self.analyzeExpression(node.value)
+proc analyzeVarDecl(analyzer: var SemanticAnalyzer, node: Node) =
+  let valueType = analyzer.analyzeExpression(node.value)
   if node.typ != "" and node.typ != valueType:
-    self.errors.add("Type mismatch in variable declaration")
-  self.addSymbol(node.name, if node.typ != "": node.typ else: valueType, true)
+    analyzer.errors.add("Type mismatch in variable declaration")
+  analyzer.addSymbol(node.name, if node.typ != "": node.typ else: valueType, true)
 
-proc analyzeStatement(self: var SemanticAnalyzer, node: Node) =
+proc analyzeStatement(analyzer: var SemanticAnalyzer, node: Node) =
   case node.kind
-  of nkVarDecl: self.analyzeVarDecl(node)
-  of nkExprStmt: discard self.analyzeExpression(node.expr)
+  of nkVarDecl: analyzer.analyzeVarDecl(node)
+  of nkExprStmt: discard analyzer.analyzeExpression(node.expr)
   of nkFunctionDecl:
-    self.addSymbol(node.fnName, "function", false)
+    analyzer.addSymbol(node.fnName, "function", false)
   else: discard
 
-proc analyze*(self: var SemanticAnalyzer, node: Node) =
+proc analyze*(analyzer: var SemanticAnalyzer, node: Node) =
   case node.kind
   of nkProgram:
     for statement in node.statements:
-      self.analyzeStatement(statement)
+      analyzer.analyzeStatement(statement)
   else:
-    self.analyzeStatement(node)
+    analyzer.analyzeStatement(node)
 
 
-proc addGlobals*(self: var SemanticAnalyzer) =
-  self.addGlobalSymbol("println", "function")
+proc addGlobals*(analyzer: var SemanticAnalyzer) =
+  analyzer.addGlobalSymbol("println", "function")

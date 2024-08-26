@@ -5,11 +5,11 @@ import interpreter/analyzer
 import interpreter/interpreter as interp
 
 proc run(source: string) =
-  echo "Source code length: ", source.len
+  print "Source code length: ", source.len
   var lexer = newLexer(source)
   print "Lexer created"
   let tokens = lexer.readTokens()
-  echo "Tokens read: ", tokens.len
+  print "Tokens read: ", tokens.len
   
   var parser = newParser(tokens)
   print "Parser created"
@@ -31,12 +31,12 @@ proc run(source: string) =
     interpreter.initializeGlobals()
     print "Globals initialized"
     interpreter.interpret(ast)
-    echo "Interpretation complete"
+    print "Interpretation complete"
 
 when isMainModule:
   print "Reading"
   let source = readFile("hello.noba")
   print "Source file read, content:"
-  echo source
+  print source
   print "Running"
   run(source)

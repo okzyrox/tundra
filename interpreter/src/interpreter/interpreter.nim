@@ -58,9 +58,9 @@ proc set(env: Environment, name: string, value: Value) =
   else:
     raise newException(ValueError, "Undefined variable '" & name & "'")
 
-proc evaluate(self: Interpreter, node: Node): Value
+proc evaluate(interpreter: Interpreter, node: Node): Value
 
-proc evaluateLiteral(self: Interpreter, node: Node): Value =
+proc evaluateLiteral(interpreter: Interpreter, node: Node): Value =
   case node.literalType
   of "int":
     Value(kind: vtInt, intValue: parseInt(node.literalValue))
@@ -73,12 +73,12 @@ proc evaluateLiteral(self: Interpreter, node: Node): Value =
   else:
     Value(kind: vtNil)
 
-proc evaluateIdentifier(self: Interpreter, node: Node): Value =
-  self.environment.get(node.identifierName)
+proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
+  interpreter.environment.get(node.identifierName)
 
-proc evaluateBinaryExpr(self: Interpreter, node: Node): Value =
-  let left = self.evaluate(node.left)
-  let right = self.evaluate(node.right)
+proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
+  let left = interpreter.evaluate(node.left)
+  let right = interpreter.evaluate(node.right)
 
   case node.operator
   of "+":
@@ -99,28 +99,29 @@ proc evaluateBinaryExpr(self: Interpreter, node: Node): Value =
 
   raise newException(ValueError, "Invalid operator for types")
 
-proc evaluateVarDecl(self: Interpreter, node: Node) =
-  let value = self.evaluate(node.value)
-  self.environment.define(node.name, value)
+proc evaluateVarDecl(interpreter: Interpreter, node: Node) =
+  let value = interpreter.evaluate(node.value)
+  interpreter.environment.define(node.name, value)
+  print "Defined variable: ", node.name, " with value: ", value
 
-proc evaluateFuncDecl(self: Interpreter, node: Node) =
+proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
   let function = proc(args: seq[Value]): Value =
-    let prevEnv = self.environment
-    self.environment = newEnvironment(prevEnv)
+    let prevEnv = interpreter.environment
+    interpreter.environment = newEnvironment(prevEnv)
     for i, param in node.params:
       if i < args.len:
-        self.environment.define(param.name, args[i])
+        interpreter.environment.define(param.name, args[i])
       else:
-        self.environment.define(param.name, Value(kind: vtNil))
+        interpreter.environment.define(param.name, Value(kind: vtNil))
     var result = Value(kind: vtNil)
     for stmt in node.body:
-      result = self.evaluate(stmt)
-    self.environment = prevEnv
+      result = interpreter.evaluate(stmt)
+    interpreter.environment = prevEnv
     return result
-  self.environment.define(node.fnName, Value(kind: vtFunc, funcValue: function))
+  interpreter.environment.define(node.fnName, Value(kind: vtFunc, funcValue: function))
 
-proc evaluateUnaryExpr(self: Interpreter, node: Node): Value =
-  let operand = self.evaluate(node.operand)
+proc evaluateUnaryExpr(interpreter: Interpreter, node: Node): Value =
+  let operand = interpreter.evaluate(node.operand)
   case node.unaryOperator
   of "-":
     case operand.kind
@@ -135,87 +136,89 @@ proc evaluateUnaryExpr(self: Interpreter, node: Node): Value =
     raise newException(ValueError, "Unknown unary operator: " &
         node.unaryOperator)
 
-proc evaluateConstDecl(self: Interpreter, node: Node) =
-  let value = self.evaluate(node.value)
-  self.environment.define(node.name, value)
+proc evaluateConstDecl(interpreter: Interpreter, node: Node) =
+  let value = interpreter.evaluate(node.value)
+  interpreter.environment.define(node.name, value)
   # Unfinished
 
-proc evaluateIfStmt(self: Interpreter, node: Node): Value =
-  let condition = self.evaluate(node.condition)
+proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
+  let condition = interpreter.evaluate(node.condition)
   if condition.kind != vtBool:
     raise newException(ValueError, "If condition must be a boolean")
   if condition.boolValue:
     for stmt in node.thenBranch:
-      result = self.evaluate(stmt)
+      result = interpreter.evaluate(stmt)
   elif node.elseBranch.len > 0:
     for stmt in node.elseBranch:
-      result = self.evaluate(stmt)
+      result = interpreter.evaluate(stmt)
   else:
     result = Value(kind: vtNil)
 
-proc evaluateWhileStmt(self: Interpreter, node: Node): Value =
+proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
   while true:
-    let condition = self.evaluate(node.loopCondition)
+    let condition = interpreter.evaluate(node.loopCondition)
     if condition.kind != vtBool:
       raise newException(ValueError, "While condition must be a boolean")
     if not condition.boolValue:
       break
     for stmt in node.loopBody:
-      discard self.evaluate(stmt)
+      discard interpreter.evaluate(stmt)
   return Value(kind: vtNil)
 
-proc evaluateForStmt(self: Interpreter, node: Node): Value =
+proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =
   raise newException(ValueError, "For loop not implemented yet")
 
-proc evaluateReturnStmt(self: Interpreter, node: Node): Value =
-  return self.evaluate(node.returnValue)
+proc evaluateReturnStmt(interpreter: Interpreter, node: Node): Value =
+  return interpreter.evaluate(node.returnValue)
 
-proc evaluateCall(self: Interpreter, node: Node): Value =
-  let callee = self.evaluate(node.callee)
-  if callee.kind != vtFunc:
-    raise newException(ValueError, "Can only call functions")
-  var args: seq[Value] = @[]
+proc evaluateCall(interpreter: Interpreter, node: Node): Value =
+  let callee = interpreter.evaluate(node.callee)
+  var arguments: seq[Value] = @[]
   for arg in node.arguments:
-    args.add(self.evaluate(arg))
-  return callee.funcValue(args)
+    arguments.add(interpreter.evaluate(arg))
+  
+  if callee.kind != vtFunc:
+    raise newException(ValueError, "Can only call functions.")
+  
+  return callee.funcValue(arguments)
 
-proc evaluate(self: Interpreter, node: Node): Value =
+proc evaluate(interpreter: Interpreter, node: Node): Value =
   print "evaluating ", node.kind
   case node.kind
   of nkProgram:
     var lastValue = Value(kind: vtNil)
     for statement in node.statements:
-      lastValue = self.evaluate(statement)
+      lastValue = interpreter.evaluate(statement)
     return lastValue
   of nkLiteral:
-    return self.evaluateLiteral(node)
+    return interpreter.evaluateLiteral(node)
   of nkIdentifier:
-    return self.evaluateIdentifier(node)
+    return interpreter.evaluateIdentifier(node)
   of nkBinaryExpr:
-    return self.evaluateBinaryExpr(node)
+    return interpreter.evaluateBinaryExpr(node)
   of nkUnaryExpr:
-    return self.evaluateUnaryExpr(node)
+    return interpreter.evaluateUnaryExpr(node)
   of nkVarDecl:
-    self.evaluateVarDecl(node)
+    interpreter.evaluateVarDecl(node)
     return Value(kind: vtNil)
   of nkConstDecl:
-    self.evaluateConstDecl(node)
+    interpreter.evaluateConstDecl(node)
     return Value(kind: vtNil)
   of nkFunctionDecl:
-    self.evaluateFuncDecl(node)
+    interpreter.evaluateFuncDecl(node)
     return Value(kind: vtNil)
   of nkIfStmt:
-    return self.evaluateIfStmt(node)
+    return interpreter.evaluateIfStmt(node)
   of nkWhileStmt:
-    return self.evaluateWhileStmt(node)
+    return interpreter.evaluateWhileStmt(node)
   of nkForStmt:
-    return self.evaluateForStmt(node)
+    return interpreter.evaluateForStmt(node)
   of nkReturnStmt:
-    return self.evaluateReturnStmt(node)
+    return interpreter.evaluateReturnStmt(node)
   of nkExprStmt:
-    return self.evaluate(node.expr)
+    return interpreter.evaluate(node.expr)
   of nkCall:
-    return self.evaluateCall(node)
+    return interpreter.evaluateCall(node)
   else:
     raise newException(ValueError, "Unexpected node type: " & $node.kind)
 
@@ -234,7 +237,7 @@ const println = proc(args: seq[Value]): Value =
   echo ""
   Value(kind: vtNil)
 
-proc initializeGlobals*(self: Interpreter) =
+proc initializeGlobals*(interpreter: Interpreter) =
   let println = proc(args: seq[Value]): Value =
     for arg in args:
       case arg.kind
@@ -247,11 +250,11 @@ proc initializeGlobals*(self: Interpreter) =
     echo ""
     return Value(kind: vtNil)
 
-  self.globals.define("println", Value(kind: vtFunc, funcValue: println))
+  interpreter.globals.define("println", Value(kind: vtFunc, funcValue: println))
 
-proc findMainFunction(self: Interpreter): Option[Value] =
-  if self.globals.values.hasKey("main"):
-    let mainValue = self.globals.values["main"]
+proc findMainFunction(interpreter: Interpreter): Option[Value] =
+  if interpreter.globals.values.hasKey("main"):
+    let mainValue = interpreter.globals.values["main"]
     if mainValue.kind == vtFunc:
       return some(mainValue)
   return none(Value)
@@ -259,15 +262,15 @@ proc findMainFunction(self: Interpreter): Option[Value] =
 
 ## int
 ##
-proc interpret*(self: Interpreter, node: Node) =
+proc interpret*(interpreter: Interpreter, node: Node) =
   print("interpreting")
-  discard self.evaluate(node)
+  discard interpreter.evaluate(node)
 
   # Attempts to find a main function if it exists, otherwise we bail for now
-  let mainFunc = self.findMainFunction()
+  let mainFunc = interpreter.findMainFunction()
   if mainFunc.isSome:
     echo("Calling main function")
-    discard self.evaluateCall(Node(kind: nkCall, callee: Node(
+    discard interpreter.evaluateCall(Node(kind: nkCall, callee: Node(
         kind: nkIdentifier, identifierName: "main"), arguments: @[]))
   else:
     echo("No main function found")

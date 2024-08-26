@@ -16,6 +16,9 @@ type TokenKind* = enum
     tkComment
     tkBracketOpen
     tkBracketClose
+    tkBraceOpen
+    tkBraceClose
+    tkEquals
     tkEOF
 
 type Token* = object
@@ -36,76 +39,79 @@ type Lexer* = object
 proc newLexer*(source: string): Lexer =
     Lexer(source: source, tokens: @[], start: 0, current: 0, line: 1, col: 1)
 
-proc atEnd(self: Lexer): bool =
-    self.current >= self.source.len
+proc atEnd(lexer: Lexer): bool =
+    lexer.current >= lexer.source.len
 
-proc advance(self: var Lexer): char =
+proc advance(lexer: var Lexer): char =
     print "advancing"
-    result = self.source[self.current]
-    inc self.current
-    inc self.col
+    result = lexer.source[lexer.current]
+    inc lexer.current
+    inc lexer.col
 
-proc addToken(self: var Lexer, kind: TokenKind) =
-    let lexeme = self.source[self.start..<self.current]
-    self.tokens.add(Token(kind: kind, lexeme: lexeme, line: self.line,
-            column: self.col - lexeme.len))
+proc addToken(lexer: var Lexer, kind: TokenKind) =
+    let lexeme = lexer.source[lexer.start..<lexer.current]
+    lexer.tokens.add(Token(kind: kind, lexeme: lexeme, line: lexer.line,
+            column: lexer.col - lexeme.len))
 
 
-proc readToken(self: var Lexer) =
-    echo "Reading token at position: ", self.current
-    let c = self.advance()
+proc readToken(lexer: var Lexer) =
+    print "Reading token at position: ", lexer.current
+    let c = lexer.advance()
     print "Character read: '", c, "'"
     case c
-    of '(': self.addToken(tkBracketOpen)
-    of ')': self.addToken(tkBracketClose)
+    of '(': lexer.addToken(tkBracketOpen)
+    of ')': lexer.addToken(tkBracketClose)
+    of '{': lexer.addToken(tkBraceOpen)
+    of '}': lexer.addToken(tkBraceClose)
+    of '=': lexer.addToken(tkEquals)
     of ' ', '\r', '\t': discard
     of '\n':
-        inc self.line
-        self.col = 1
+        inc lexer.line
+        lexer.col = 1
     else:
         if c.isDigit:
-            while self.current < self.source.len and self.source[
-                    self.current].isDigit:
-                discard self.advance()
-            if self.current < self.source.len and self.source[self.current] == '.':
-                discard self.advance()
-                while self.current < self.source.len and self.source[
-                        self.current].isDigit:
-                    discard self.advance()
-                self.addToken(tkFloat)
+            while lexer.current < lexer.source.len and lexer.source[
+                    lexer.current].isDigit:
+                discard lexer.advance()
+            if lexer.current < lexer.source.len and lexer.source[lexer.current] == '.':
+                discard lexer.advance()
+                while lexer.current < lexer.source.len and lexer.source[
+                        lexer.current].isDigit:
+                    discard lexer.advance()
+                lexer.addToken(tkFloat)
             else:
-                self.addToken(tkInt)
+                lexer.addToken(tkInt)
         elif c == '"':
-            while self.current < self.source.len and self.source[
-                    self.current] != '"':
-                discard self.advance()
-            if self.current < self.source.len:
-                discard self.advance()
-            self.addToken(tkString)
+            while lexer.current < lexer.source.len and lexer.source[
+                    lexer.current] != '"':
+                discard lexer.advance()
+            if lexer.current < lexer.source.len:
+                discard lexer.advance()
+            lexer.addToken(tkString)
         elif c in ['{', '}']:
-            self.addToken(tkSymbol)
+            lexer.addToken(tkSymbol)
         elif c.isAlphaAscii:
-            while self.current < self.source.len and (self.source[
-                    self.current].isAlphaNumeric or self.source[self.current] == '_'):
-                discard self.advance()
-            let lexeme = self.source[self.start..<self.current]
+            while lexer.current < lexer.source.len and (lexer.source[
+                    lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
+                discard lexer.advance()
+            let lexeme = lexer.source[lexer.start..<lexer.current]
             if lexeme in ["var", "const", "if", "else", "while", "for", "fn", "return"]:
-                self.addToken(tkKeyword)
+                lexer.addToken(tkKeyword)
             else:
-                self.addToken(tkIdent)
+                lexer.addToken(tkIdent)
         else:
             echo "Unrecognized char: ", c
             discard
-    echo "Token added: ", self.tokens[^1]
+    print "Token added: ", lexer.tokens[^1]
 
-proc readTokens*(self: var Lexer): seq[Token] =
-    echo "Starting tokenization"
-    while not self.atEnd():
-        print "Current position: ", self.current, " / ", self.source.len
-        self.start = self.current
-        self.readToken()
+proc readTokens*(lexer: var Lexer): seq[Token] =
+    print "Starting tokenization"
+    while not lexer.atEnd():
+        print "Current position: ", lexer.current, " / ", lexer.source.len
+        lexer.start = lexer.current
+        lexer.readToken()
 
-    self.tokens.add(Token(kind: tkEOF, lexeme: "", line: self.line,
-            column: self.col))
-    echo "Tokenization complete. Total tokens: ", self.tokens.len
-    result = self.tokens
+    lexer.tokens.add(Token(kind: tkEOF, lexeme: "", line: lexer.line,
+            column: lexer.col))
+    print "Tokenization complete. Total tokens: ", lexer.tokens.len
+    result = lexer.tokens
