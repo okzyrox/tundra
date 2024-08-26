@@ -20,3 +20,9 @@ cd interpreter
 nim c -r src/main.nim
 ```
 will run `hello.noba`
+
+
+
+## Code Highlighting
+
+- [**vscode**](https://github.com/okzyrox/nb-highlighter.git)
