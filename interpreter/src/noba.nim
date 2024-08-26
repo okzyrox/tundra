@@ -1,9 +1,9 @@
 
-import interpreter/utils
-import interpreter/lex
-import interpreter/parser
-import interpreter/analyzer
-import interpreter/interpreter as interp
+import nobapkg/utils
+import nobapkg/lex
+import nobapkg/parser
+import nobapkg/analyzer
+import nobapkg/interpreter as interp
 
 const NOBA_VERSION {.strdefine.}:string = "0.0.1-alpha"
 const NOBA_COMMIT {.strdefine.}:string = "0"
