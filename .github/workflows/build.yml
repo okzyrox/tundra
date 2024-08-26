@@ -20,38 +20,36 @@ jobs:
         with:
           nim-version: '2.0.0' # ex: 1.0.x, 1.2.x, 1.4.x ...
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cd interpreter
       - name: Install Packages
-        run: nimble install -Y
+        run: cd interpreter && nimble install -Y
 
       - name: Build for Windows
-        run: nimble build -d:NOBA_COMMIT=${{steps.git_short_hash.outputs.result}}
+        run: cd interpreter && nimble build -d:NOBA_COMMIT=${{steps.git_short_hash.outputs.result}}
   
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
           name: noba
-          path: build/noba.exe    
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Get git short hash
-        id: git_short_hash
-        run: echo "result=$(git rev-parse --short "${{ github.sha }}")" >> $GITHUB_OUTPUT
-        shell: bash
-      - name: Setup nim
-        uses: jiro4989/setup-nim-action@v1
-        with:
-          nim-version: '2.0.0' # ex: 1.0.x, 1.2.x, 1.4.x ...
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - run: cd interpreter
-      - name: Install Packages
-        run: nimble install -Y
-      - name: Build for Linux
-        run: nimble build -d:NOBA_COMMIT=${{steps.git_short_hash.outputs.result}}
+          path: interpreter/build/noba.exe    
+  # build-linux:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Get git short hash
+  #       id: git_short_hash
+  #       run: echo "result=$(git rev-parse --short "${{ github.sha }}")" >> $GITHUB_OUTPUT
+  #       shell: bash
+  #     - name: Setup nim
+  #       uses: jiro4989/setup-nim-action@v1
+  #       with:
+  #         nim-version: '2.0.0' # ex: 1.0.x, 1.2.x, 1.4.x ...
+  #         repo-token: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Install Packages
+  #       run: nimble install -Y
+  #     - name: Build for Linux
+  #       run: nimble build -d:NOBA_COMMIT=${{steps.git_short_hash.outputs.result}}
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: noba
-          path: build/noba
+  #     - uses: actions/upload-artifact@v3
+  #       with:
+  #         name: noba
+  #         path: build/noba
