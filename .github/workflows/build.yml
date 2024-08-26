@@ -44,7 +44,7 @@ jobs:
         uses: jiro4989/setup-nim-action@v1
         with:
           nim-version: '2.0.0' # ex: 1.0.x, 1.2.x, 1.4.x ...
-          repo-token: {{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cd interpreter
       - name: Install Packages
         run: nimble install -Y
