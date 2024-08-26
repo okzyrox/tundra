@@ -1,8 +1,13 @@
+
 import interpreter/utils
 import interpreter/lex
 import interpreter/parser
 import interpreter/analyzer
 import interpreter/interpreter as interp
+
+const NOBA_VERSION {.strdefine.}:string = "0.0.1-alpha"
+const NOBA_COMMIT {.strdefine.}:string = "0"
+
 
 proc run(source: string) =
   print "Source code length: ", source.len
@@ -32,11 +37,18 @@ proc run(source: string) =
     print "Globals initialized"
     interpreter.interpret(ast)
     print "Interpretation complete"
+  
+proc getVersion(): void =
+  echo "Version: " & NOBA_VERSION
+  echo "Commit: " & NOBA_COMMIT
+
+proc main(file_path: string = "", version: bool = false): void =
+  if file_path != "":
+    let source = readFile(file_path)
+    run(source)
+  elif version:
+    getVersion()
 
 when isMainModule:
-  print "Reading"
-  let source = readFile("hello.noba")
-  print "Source file read, content:"
-  print source
-  print "Running"
-  run(source)
+  import cligen; dispatch main, help = {"file_path": "The path to the file to run (.noba extension)",
+  "version": "Build version"}

@@ -17,9 +17,17 @@ MAYBE
 ```bat
 
 cd interpreter
-nim c -r src/main.nim
+nimble build
 ```
-will run `hello.noba`
+will build the interpreter (noba)
+
+then you can run it like this:
+
+```sh
+
+noba -f=filename.noba
+
+```
 
 
 
