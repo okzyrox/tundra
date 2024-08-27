@@ -65,6 +65,8 @@ proc parsePrimary(parser: var Parser): Node =
     if parser.match(tkBracketOpen):
       return parser.parseCall(identifier)
     return identifier
+  elif parser.match(tkOperator):
+    return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "operator")
   else:
     return Node(kind: nkLiteral, literalValue: "ERROR", literalType: "error")
 
@@ -76,25 +78,27 @@ proc parseUnary(parser: var Parser): Node =
   return parser.parsePrimary()
 
 proc parseFactor(parser: var Parser): Node =
-  var expr = parser.parseUnary()
-  while parser.match(tkSymbol): # Assuming '*' and '/' are tokenized as symbols
+  if parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["+", "-"]:
     let operator = parser.tokens[parser.current - 1].lexeme
-    let right = parser.parseUnary()
-    expr = Node(kind: nkBinaryExpr, left: expr, right: right,
-        operator: operator)
-  return expr
+    let right = parser.parseFactor()
+    return Node(kind: nkUnaryExpr, operand: right, unaryOperator: operator)
+  return parser.parsePrimary()
 
 proc parseTerm(parser: var Parser): Node =
   var expr = parser.parseFactor()
-  while parser.match(tkSymbol): # Assuming '+' and '-' are tokenized as symbols
+  while parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["*", "/"]:
     let operator = parser.tokens[parser.current - 1].lexeme
     let right = parser.parseFactor()
-    expr = Node(kind: nkBinaryExpr, left: expr, right: right,
-        operator: operator)
+    expr = Node(kind: nkBinaryExpr, left: expr, right: right, operator: operator)
   return expr
 
 proc parseExpression(parser: var Parser): Node =
-  parser.parseTerm()
+  var expr = parser.parseTerm()
+  while parser.match(tkOperator):
+    let operator = parser.tokens[parser.current - 1].lexeme
+    let right = parser.parseTerm()
+    expr = Node(kind: nkBinaryExpr, left: expr, right: right, operator: operator)
+  return expr
 
 proc parseVarDecl(parser: var Parser): Node =
   discard parser.advance() # consume 'var'
@@ -108,9 +112,9 @@ proc parseVarDecl(parser: var Parser): Node =
 
 proc parseFunctionDecl(parser: var Parser): Node =
   discard parser.advance() # consume 'fn'
-  let name = parser.consume(tkIdent, "Expect function name.").lexeme
-  echo "Function name: ", name
-  discard parser.consume(tkBracketOpen, "Expect '(' after function name.")
+  let name = parser.consume(tkIdent, "Expected function name.").lexeme
+  print "Function name: ", name
+  discard parser.consume(tkBracketOpen, "Expected '(' after function name.")
   var params: seq[tuple[name: string, typ: string]] = @[]
 
   if not parser.check(tkBracketClose):
@@ -120,8 +124,8 @@ proc parseFunctionDecl(parser: var Parser): Node =
       discard parser.consume(tkSymbol, "Expected ':' after parameter name.")
       let paramType = parser.consume(tkIdent, "Expected parameter type.").lexeme
       params.add((name: paramName, typ: paramType))
-      if not parser.match(tkSymbol): break
-      discard parser.consume(tkSymbol, "Expected ',' between parameters.")
+      if not parser.check(tkSymbol) or parser.peek().lexeme != ",": break
+      discard parser.advance() # consume ','
 
   discard parser.consume(tkBracketClose, "Expected ')' after parameters.")
   discard parser.consume(tkBraceOpen, "Expected '{' before function body.")
@@ -131,13 +135,17 @@ proc parseFunctionDecl(parser: var Parser): Node =
     body.add(parser.parseStatement())
   discard parser.consume(tkBraceClose, "Expected '}' after function body.")
   Node(kind: nkFunctionDecl, fnName: name, params: params, body: body)
-  
 
 proc parseExpressionStatement(parser: var Parser): Node =
   let expr = parser.parseExpression()
   if parser.peek().kind == tkSymbol and parser.peek().lexeme == ";":
     discard parser.advance()
   Node(kind: nkExprStmt, expr: expr)
+
+proc parseReturnStmt(parser: var Parser): Node =
+  discard parser.advance() # consume 'return'
+  let value = parser.parseExpression()
+  Node(kind: nkReturnStmt, returnValue: value)
 
 proc parseStatement(parser: var Parser): Node =
   print "Parsing statement, current token: ", parser.peek().kind
@@ -147,6 +155,8 @@ proc parseStatement(parser: var Parser): Node =
       return parser.parseVarDecl()
     of "fn":
       return parser.parseFunctionDecl()
+    of "return":
+      return parser.parseReturnStmt()
     else:
       echo "Unexpected keyword: ", parser.peek().lexeme
       return Node(kind: nkExprStmt, expr: parser.parseExpression())
@@ -155,8 +165,7 @@ proc parseStatement(parser: var Parser): Node =
   else:
     echo "Unexpected token in statement: ", parser.peek().kind
     discard parser.advance()
-    return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral,
-        literalValue: "ERROR", literalType: "error"))
+    return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "ERROR", literalType: "error"))
 
 proc parse*(parser: var Parser): Node =
   var statements: seq[Node] = @[]

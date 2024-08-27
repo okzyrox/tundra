@@ -14,6 +14,7 @@ type TokenKind* = enum
     tkString
     tkSymbol
     tkComment
+    tkOperator
     tkBracketOpen
     tkBracketClose
     tkBraceOpen
@@ -64,6 +65,9 @@ proc readToken(lexer: var Lexer) =
     of '{': lexer.addToken(tkBraceOpen)
     of '}': lexer.addToken(tkBraceClose)
     of '=': lexer.addToken(tkEquals)
+    of ':': lexer.addToken(tkSymbol)
+    of ',': lexer.addToken(tkSymbol)
+    of '+', '-', '*', '/': lexer.addToken(tkOperator)
     of ' ', '\r', '\t': discard
     of '\n':
         inc lexer.line

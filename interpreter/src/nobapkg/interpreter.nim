@@ -2,11 +2,11 @@
 ##
 
 import ast, utils
-import tables, strutils, options
+import tables, strutils, options, sequtils
 
 type
   ValueType = enum
-    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil
+    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs
 
   Value = object
     case kind: ValueType
@@ -14,7 +14,8 @@ type
     of vtFloat: floatValue: float
     of vtString: stringValue: string
     of vtBool: boolValue: bool
-    of vtFunc: funcValue: proc(args: seq[Value]): Value
+    of vtFunc: funcValue: proc(args: Value): Value
+    of vtArgs: argsValue: seq[Value]
     of vtNil: discard
 
   Environment = ref object
@@ -70,8 +71,24 @@ proc evaluateLiteral(interpreter: Interpreter, node: Node): Value =
     Value(kind: vtString, stringValue: node.literalValue)
   of "bool":
     Value(kind: vtBool, boolValue: parseBool(node.literalValue))
+  of "operator":
+    Value(kind: vtString, stringValue: node.literalValue)
   else:
     Value(kind: vtNil)
+
+proc `$`(v: Value): string =
+  case v.kind
+  of vtInt: $v.intValue
+  of vtFloat: $v.floatValue
+  of vtString: v.stringValue
+  of vtBool: $v.boolValue
+  of vtFunc: "<function>"
+  of vtArgs: 
+    var output: seq[string] = @[]
+    for arg in v.argsValue:
+      output.add($arg)
+    output.join(" ")
+  of vtNil: "nil"
 
 proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
   interpreter.environment.get(node.identifierName)
@@ -86,16 +103,17 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
     of vtInt:
       if right.kind == vtInt:
         return Value(kind: vtInt, intValue: left.intValue + right.intValue)
+      else:
+        raise newException(ValueError, "Cannot add int and non-int")
     of vtFloat:
       if right.kind == vtFloat:
-        return Value(kind: vtFloat, floatValue: left.floatValue +
-            right.floatValue)
+        return Value(kind: vtFloat, floatValue: left.floatValue + right.floatValue)
     of vtString:
-      if right.kind == vtString:
-        return Value(kind: vtString, stringValue: left.stringValue &
-            right.stringValue)
+      return Value(kind: vtString, stringValue: left.stringValue & $right)
     else:
       discard
+  of ",":
+    return Value(kind: vtArgs, argsValue: @[left, right])
 
   raise newException(ValueError, "Invalid operator for types")
 
@@ -105,14 +123,15 @@ proc evaluateVarDecl(interpreter: Interpreter, node: Node) =
   print "Defined variable: ", node.name, " with value: ", value
 
 proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
-  let function = proc(args: seq[Value]): Value =
+  let function = proc(args: Value): Value =
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(prevEnv)
-    for i, param in node.params:
-      if i < args.len:
-        interpreter.environment.define(param.name, args[i])
-      else:
-        interpreter.environment.define(param.name, Value(kind: vtNil))
+    if args.kind == vtArgs:
+      for i, param in node.params:
+        if i < args.argsValue.len:
+          interpreter.environment.define(param.name, args.argsValue[i])
+        else:
+          interpreter.environment.define(param.name, Value(kind: vtNil))
     var result = Value(kind: vtNil)
     for stmt in node.body:
       result = interpreter.evaluate(stmt)
@@ -179,8 +198,7 @@ proc evaluateCall(interpreter: Interpreter, node: Node): Value =
   
   if callee.kind != vtFunc:
     raise newException(ValueError, "Can only call functions.")
-  
-  return callee.funcValue(arguments)
+  return callee.funcValue(Value(kind: vtArgs, argsValue: arguments))
 
 proc evaluate(interpreter: Interpreter, node: Node): Value =
   print "evaluating ", node.kind
@@ -224,32 +242,16 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
 
 ## Builtins
 
-const println = proc(args: seq[Value]): Value =
-  echo "println"
-  for arg in args:
-    case arg.kind
-    of vtInt: stdout.write($arg.intValue)
-    of vtFloat: stdout.write($arg.floatValue)
-    of vtString: stdout.write(arg.stringValue)
-    of vtBool: stdout.write($arg.boolValue)
-    of vtFunc: stdout.write("Function")
-    of vtNil: stdout.write("nil")
-  echo ""
-  Value(kind: vtNil)
+const println = proc(args: Value): Value =
+  var output = ""
+  if args.kind == vtArgs:
+    output = args.argsValue.mapIt($it).join(" ")
+  else:
+    output = $args
+  echo output
+  return Value(kind: vtNil)
 
 proc initializeGlobals*(interpreter: Interpreter) =
-  let println = proc(args: seq[Value]): Value =
-    for arg in args:
-      case arg.kind
-      of vtInt: stdout.write($arg.intValue)
-      of vtFloat: stdout.write($arg.floatValue)
-      of vtString: stdout.write(arg.stringValue)
-      of vtBool: stdout.write($arg.boolValue)
-      of vtNil: stdout.write("nil")
-      of vtFunc: stdout.write("<function>")
-    echo ""
-    return Value(kind: vtNil)
-
   interpreter.globals.define("println", Value(kind: vtFunc, funcValue: println))
 
 proc findMainFunction(interpreter: Interpreter): Option[Value] =

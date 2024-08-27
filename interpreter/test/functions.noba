@@ -1,0 +1,15 @@
+fn speak(person: string) {
+    println("Hello,", person)
+}
+
+fn add(a: int, b: int) {
+    return a + b
+}
+
+fn main() {
+    speak("John")
+    speak("Jack")
+
+    var x = add(1, 2)
+    println(x)
+}
