@@ -162,6 +162,14 @@ proc parseStatement(parser: var Parser): Node =
       return Node(kind: nkExprStmt, expr: parser.parseExpression())
   elif parser.peek().kind == tkIdent:
     return parser.parseExpressionStatement()
+  elif parser.peek().kind == tkOperator:
+    return parser.parseExpressionStatement()
+  elif parser.peek().kind == tkInt:
+    return parser.parseExpressionStatement()
+  elif parser.peek().kind == tkFloat:
+    return parser.parseExpressionStatement()
+  elif parser.peek().kind == tkString:
+    return parser.parseExpressionStatement()
   else:
     echo "Unexpected token in statement: ", parser.peek().kind
     discard parser.advance()

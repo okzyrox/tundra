@@ -11,5 +11,7 @@ fn main() {
     speak("Jack")
 
     var x = add(1, 2)
+    var y = 1 + 2
     println(x)
+    println(y)
 }

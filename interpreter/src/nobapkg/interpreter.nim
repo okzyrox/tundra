@@ -6,7 +6,7 @@ import tables, strutils, options, sequtils
 
 type
   ValueType = enum
-    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs
+    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator
 
   Value = object
     case kind: ValueType
@@ -15,6 +15,7 @@ type
     of vtString: stringValue: string
     of vtBool: boolValue: bool
     of vtFunc: funcValue: proc(args: Value): Value
+    of vtOperator: binaryExpr: Node
     of vtArgs: argsValue: seq[Value]
     of vtNil: discard
 
@@ -89,6 +90,8 @@ proc `$`(v: Value): string =
       output.add($arg)
     output.join(" ")
   of vtNil: "nil"
+  else:
+    "other value kind"
 
 proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
   interpreter.environment.get(node.identifierName)
@@ -103,13 +106,41 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
     of vtInt:
       if right.kind == vtInt:
         return Value(kind: vtInt, intValue: left.intValue + right.intValue)
-      else:
-        raise newException(ValueError, "Cannot add int and non-int")
     of vtFloat:
       if right.kind == vtFloat:
         return Value(kind: vtFloat, floatValue: left.floatValue + right.floatValue)
     of vtString:
       return Value(kind: vtString, stringValue: left.stringValue & $right)
+    else:
+      discard
+  of "-":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtInt, intValue: left.intValue - right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtFloat, floatValue: left.floatValue - right.floatValue)
+    else:
+      discard
+  of "*":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtInt, intValue: left.intValue * right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtFloat, floatValue: left.floatValue * right.floatValue)
+    else:
+      discard
+  of "/":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtInt, intValue: left.intValue div right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtFloat, floatValue: left.floatValue / right.floatValue)
     else:
       discard
   of ",":
@@ -125,18 +156,21 @@ proc evaluateVarDecl(interpreter: Interpreter, node: Node) =
 proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
   let function = proc(args: Value): Value =
     let prevEnv = interpreter.environment
-    interpreter.environment = newEnvironment(prevEnv)
-    if args.kind == vtArgs:
-      for i, param in node.params:
-        if i < args.argsValue.len:
-          interpreter.environment.define(param.name, args.argsValue[i])
-        else:
-          interpreter.environment.define(param.name, Value(kind: vtNil))
+    interpreter.environment = newEnvironment(if prevEnv.parent != nil: prevEnv.parent else: interpreter.globals)
+    for i, param in node.params:
+      if i < args.argsValue.len:
+        interpreter.environment.define(param.name, args.argsValue[i])
+    
     var result = Value(kind: vtNil)
     for stmt in node.body:
       result = interpreter.evaluate(stmt)
+      if stmt.kind == nkReturnStmt:
+        interpreter.environment = prevEnv
+        return result
+    
     interpreter.environment = prevEnv
     return result
+
   interpreter.environment.define(node.fnName, Value(kind: vtFunc, funcValue: function))
 
 proc evaluateUnaryExpr(interpreter: Interpreter, node: Node): Value =
@@ -192,13 +226,13 @@ proc evaluateReturnStmt(interpreter: Interpreter, node: Node): Value =
 
 proc evaluateCall(interpreter: Interpreter, node: Node): Value =
   let callee = interpreter.evaluate(node.callee)
-  var arguments: seq[Value] = @[]
+  var arguments: Value = Value(kind: vtArgs, argsValue: @[])
   for arg in node.arguments:
-    arguments.add(interpreter.evaluate(arg))
+    arguments.argsValue.add(interpreter.evaluate(arg))
   
   if callee.kind != vtFunc:
     raise newException(ValueError, "Can only call functions.")
-  return callee.funcValue(Value(kind: vtArgs, argsValue: arguments))
+  return callee.funcValue(arguments)
 
 proc evaluate(interpreter: Interpreter, node: Node): Value =
   print "evaluating ", node.kind
@@ -209,16 +243,23 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       lastValue = interpreter.evaluate(statement)
     return lastValue
   of nkLiteral:
-    return interpreter.evaluateLiteral(node)
+    case node.literalType
+    of "int": return Value(kind: vtInt, intValue: parseInt(node.literalValue))
+    of "float": return Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
+    of "string": return Value(kind: vtString, stringValue: node.literalValue)
+    of "operator": return Value(kind: vtOperator, binaryExpr: node)
+
+    else: raise newException(ValueError, "Unknown literal type")
   of nkIdentifier:
-    return interpreter.evaluateIdentifier(node)
+    return interpreter.environment.get(node.identifierName)
   of nkBinaryExpr:
     return interpreter.evaluateBinaryExpr(node)
   of nkUnaryExpr:
     return interpreter.evaluateUnaryExpr(node)
   of nkVarDecl:
-    interpreter.evaluateVarDecl(node)
-    return Value(kind: vtNil)
+    let value = interpreter.evaluate(node.value)
+    interpreter.environment.define(node.name, value)
+    return value
   of nkConstDecl:
     interpreter.evaluateConstDecl(node)
     return Value(kind: vtNil)
