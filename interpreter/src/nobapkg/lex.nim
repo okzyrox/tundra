@@ -67,8 +67,34 @@ proc readToken(lexer: var Lexer) =
     of '=': lexer.addToken(tkEquals)
     of ':': lexer.addToken(tkSymbol)
     of ',': lexer.addToken(tkSymbol)
-    of '+', '-', '*', '/': lexer.addToken(tkOperator)
-    of ' ', '\r', '\t': discard
+    of '+', '-', '*', '/':
+        if c == '/' and lexer.current < lexer.source.len:
+            if lexer.source[lexer.current] == '/':  # Single-line comment
+                discard lexer.advance() # consume second '/'
+                while lexer.current < lexer.source.len and lexer.source[lexer.current] != '\n':
+                    discard lexer.advance()
+                return  # Skip adding token for comments
+            elif lexer.source[lexer.current] == '*':  # Multi-line comment
+                discard lexer.advance() # consume '*'
+                var nesting = 1
+                while nesting > 0 and lexer.current < lexer.source.len:
+                    if lexer.current + 1 < lexer.source.len:
+                        if lexer.source[lexer.current] == '/' and lexer.source[lexer.current + 1] == '*':
+                            nesting += 1
+                            discard lexer.advance()
+                        elif lexer.source[lexer.current] == '*' and lexer.source[lexer.current + 1] == '/':
+                            nesting -= 1
+                            discard lexer.advance()
+                    discard lexer.advance()
+                if lexer.current < lexer.source.len:
+                    discard lexer.advance() # consume final '/'
+                return  # Skip adding token for comments
+            else:
+                lexer.addToken(tkOperator)
+        else:
+            lexer.addToken(tkOperator)
+    of ' ', '\r', '\t':
+        discard
     of '\n':
         inc lexer.line
         lexer.col = 1
