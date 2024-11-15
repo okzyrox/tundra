@@ -286,7 +286,7 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
 const println = proc(args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
-    output = args.argsValue.mapIt($it).join(" ")
+    output = args.argsValue.mapIt($it).join()
   else:
     output = $args
   echo output
