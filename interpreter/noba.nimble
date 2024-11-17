@@ -6,8 +6,8 @@ description   = "nb-interpreter"
 license       = "MIT"
 srcDir        = "src"
 installExt    = @["nim"]
-bin           = @["noba"]
-binDir        = "build"
+bin           = @["nb"]
+binDir        = "../bin"
 
 
 # Dependencies
