@@ -139,7 +139,17 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
       if right.kind == vtFloat:
         return Value(kind: vtFloat, floatValue: left.floatValue + right.floatValue)
     of vtString:
-      return Value(kind: vtString, stringValue: left.stringValue & $right)
+      var val: string
+      var left = left.stringValue
+      var right = 
+        if right.kind == vtString:
+          right.stringValue
+        else:
+          $right & "\""
+      left = left.strip(leading = false, trailing = true, chars = {'\"'})
+      right = right.strip(leading = true, trailing = false, chars = {'\"'})
+      val = left & right
+      return Value(kind: vtString, stringValue: val)
     else:
       discard
   of "-":
@@ -168,7 +178,8 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
     case left.kind
     of vtInt:
       if right.kind == vtInt:
-        return Value(kind: vtInt, intValue: left.intValue div right.intValue)
+        var value = left.intValue / right.intValue
+        return Value(kind: vtFloat, floatValue: value)
     of vtFloat:
       if right.kind == vtFloat:
         return Value(kind: vtFloat, floatValue: left.floatValue / right.floatValue)
@@ -192,7 +203,7 @@ proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
       if i < args.argsValue.len:
         interpreter.environment.define(param.name, args.argsValue[i])
     
-    var result = Value(kind: vtNil)
+    result = Value(kind: vtNil)
     for stmt in node.body:
       result = interpreter.evaluate(stmt)
       if stmt.kind == nkReturnStmt:
@@ -309,8 +320,8 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
     return interpreter.evaluate(node.expr)
   of nkCall:
     return interpreter.evaluateCall(node)
-  else:
-    raise newException(ValueError, "Unexpected node type: " & $node.kind)
+  #else:
+  #  raise newException(ValueError, "Unexpected node type: " & $node.kind)
 
 ## Builtins
 
@@ -320,6 +331,7 @@ const printlnfunc = proc(args: Value): Value =
     output = args.argsValue.mapIt($it).join(", ")
   else:
     output = $args
+  output = output.strip(leading = true, trailing = true, chars = {'\"'})
   echo output
   return Value(kind: vtNil)
 

@@ -1,7 +1,5 @@
 ## AST
 
-import strutils
-
 type
   NodeKind* = enum
     nkProgram, nkVarDecl, nkConstDecl, nkFunctionDecl, nkIfStmt, nkWhileStmt,
