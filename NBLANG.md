@@ -860,9 +860,9 @@ There are various built in functions and methods that can be used.
 
 #### Console
 
-- `print()`  Prints to the console
-- `println()`  Prints to the console with a newline at the end
-- `read()`  Returns a string
+- [x] `print()`  Prints to the console
+- [x] `println()`  Prints to the console with a newline at the end
+- [x] `read()`  Returns a string
 
 #### Math
 
@@ -877,7 +877,7 @@ There are various built in functions and methods that can be used.
 
 #### String
 
-- `$(x: any)`  String conversion
+- `tostring(x: any)`  String conversion
 - `len()`  Returns the length of a string
 - `lower()`  Converts a string to lowercase
 - `upper()`  Converts a string to uppercase
@@ -885,6 +885,11 @@ There are various built in functions and methods that can be used.
 - `remove()`  Removes a substring from a string
 - `replace()`  Replaces a substring in a string
 - `splitby(x: string)`  Returns an array, the string is split by the specified string. If there are no matches, then the string is returned within the array
+
+#### Int/Float
+
+- `toint(x: any)`  Integer conversion
+- `tofloat(x: any)`  Float conversion
 
 ### Running
 

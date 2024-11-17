@@ -322,30 +322,7 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
   #else:
   #  raise newException(ValueError, "Unexpected node type: " & $node.kind)
 
-## Builtins
-
-const printlnfunc = proc(args: Value): Value =
-  var output = ""
-  if args.kind == vtArgs:
-    output = args.argsValue.mapIt($it).join(", ")
-  else:
-    output = $args
-  output = output.strip(leading = true, trailing = true, chars = {'\"'})
-  echo output
-  return Value(kind: vtNil)
-
-const assertfunc = proc(args: Value): Value =
-  let condition = args.argsValue[0]
-  let expected = args.argsValue[1]
-  let message = args.argsValue[2]
-  if condition != expected:
-    raise newException(ValueError, message.stringValue)
-
-  return Value(kind: vtNil)
-
-proc initializeGlobals*(interpreter: Interpreter) =
-  interpreter.globals.define("println", Value(kind: vtFunc, funcValue: printlnfunc))
-  interpreter.globals.define("assert", Value(kind: vtFunc, funcValue: assertfunc))
+include "inc/builtins.nim" # builtin funcs (impure)
 
 proc findMainFunction(interpreter: Interpreter): Option[Value] =
   if interpreter.globals.values.hasKey("main"):
