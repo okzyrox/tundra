@@ -156,11 +156,11 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
     case left.kind
     of vtInt:
       if right.kind == vtInt:
-        echo "Subtracting integers: ", left.intValue, " - ", right.intValue
+        print "Subtracting integers: ", left.intValue, " - ", right.intValue
         return Value(kind: vtInt, intValue: left.intValue - right.intValue)
     of vtFloat:
       if right.kind == vtFloat:
-        echo "Subtracting floats: ", left.floatValue, " - ", right.floatValue
+        print "Subtracting floats: ", left.floatValue, " - ", right.floatValue
         return Value(kind: vtFloat, floatValue: left.floatValue - right.floatValue)
     else:
       discard
@@ -190,10 +190,11 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
 
   raise newException(ValueError, "Invalid operator for types")
 
-proc evaluateVarDecl(interpreter: Interpreter, node: Node) =
+proc evaluateVarDecl(interpreter: Interpreter, node: Node): Value =
   let value = interpreter.evaluate(node.value)
   interpreter.environment.define(node.name, value)
   print "Defined variable: ", node.name, " with value: ", value
+  return value
 
 proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
   let function = proc(args: Value): Value =
@@ -299,9 +300,7 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
   of nkUnaryExpr:
     return interpreter.evaluateUnaryExpr(node)
   of nkVarDecl:
-    let value = interpreter.evaluate(node.value)
-    interpreter.environment.define(node.name, value)
-    return value
+    return interpreter.evaluateVarDecl(node)
   of nkConstDecl:
     interpreter.evaluateConstDecl(node)
     return Value(kind: vtNil)
@@ -365,8 +364,9 @@ proc interpret*(interpreter: Interpreter, node: Node) =
   # Attempts to find a main function if it exists, otherwise we bail for now
   let mainFunc = interpreter.findMainFunction()
   if mainFunc.isSome:
-    echo("Calling main function")
+    print("Calling main function")
     discard interpreter.evaluateCall(Node(kind: nkCall, callee: Node(
         kind: nkIdentifier, identifierName: "main"), arguments: @[]))
   else:
-    echo("No main function found")
+    echo "No main function found, create a function named 'main' to run your program."
+    echo "Exiting"

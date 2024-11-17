@@ -1,0 +1,9 @@
+fn main() {
+    var a = 1
+    var b = -a
+
+    println(a)
+    println(b)
+
+    assert(b, -1, "b should be -1")
+}

@@ -1,5 +1,5 @@
 fn speak(person: string) {
-    println("Hello,", person)
+    println("Hello, " + person + "!")
 }
 
 fn add(a: int, b: int) {
