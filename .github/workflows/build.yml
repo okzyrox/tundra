@@ -30,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: noba
-          path: interpreter/build/noba.exe    
+          path: bin/nb.exe    
   # build-linux:
   #   runs-on: ubuntu-latest
   #   steps:
