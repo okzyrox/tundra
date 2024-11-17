@@ -86,7 +86,7 @@ proc parseFactor(parser: var Parser): Node =
 
 proc parseTerm(parser: var Parser): Node =
   var expr = parser.parseFactor()
-  while parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["*", "/"]:
+  while parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["*", "/", "+", "-"]:
     let operator = parser.tokens[parser.current - 1].lexeme
     let right = parser.parseFactor()
     expr = Node(kind: nkBinaryExpr, left: expr, right: right, operator: operator)

@@ -27,6 +27,36 @@ type
     globals: Environment
     environment: Environment
 
+proc `==`(a, b: Value): bool =
+  if a.kind != b.kind:
+    return false
+  
+  var kind = a.kind
+  case kind
+  of vtInt:
+    if b.kind != vtInt:
+      return false
+    return a.intValue == b.intValue
+  of vtFloat:
+    if b.kind != vtFloat:
+      return false
+    return a.floatValue == b.floatValue
+  of vtString:
+    if b.kind != vtString:
+      return false
+    return a.stringValue == b.stringValue
+  of vtBool:
+    if b.kind != vtBool:
+      return false
+    return a.boolValue == b.boolValue
+  else:
+    return false
+
+proc `!=`(a, b: Value): bool =
+  not (a == b)
+  
+
+
 proc newEnvironment(parent: Environment = nil): Environment =
   Environment(values: initTable[string, Value](), parent: parent)
 
@@ -99,7 +129,6 @@ proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
 proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
   let left = interpreter.evaluate(node.left)
   let right = interpreter.evaluate(node.right)
-
   case node.operator
   of "+":
     case left.kind
@@ -117,9 +146,11 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
     case left.kind
     of vtInt:
       if right.kind == vtInt:
+        echo "Subtracting integers: ", left.intValue, " - ", right.intValue
         return Value(kind: vtInt, intValue: left.intValue - right.intValue)
     of vtFloat:
       if right.kind == vtFloat:
+        echo "Subtracting floats: ", left.floatValue, " - ", right.floatValue
         return Value(kind: vtFloat, floatValue: left.floatValue - right.floatValue)
     else:
       discard
@@ -283,7 +314,7 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
 
 ## Builtins
 
-const println = proc(args: Value): Value =
+const printlnfunc = proc(args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
     output = args.argsValue.mapIt($it).join(", ")
@@ -292,8 +323,18 @@ const println = proc(args: Value): Value =
   echo output
   return Value(kind: vtNil)
 
+const assertfunc = proc(args: Value): Value =
+  let condition = args.argsValue[0]
+  let expected = args.argsValue[1]
+  let message = args.argsValue[2]
+  if condition != expected:
+    raise newException(ValueError, message.stringValue)
+
+  return Value(kind: vtNil)
+
 proc initializeGlobals*(interpreter: Interpreter) =
-  interpreter.globals.define("println", Value(kind: vtFunc, funcValue: println))
+  interpreter.globals.define("println", Value(kind: vtFunc, funcValue: printlnfunc))
+  interpreter.globals.define("assert", Value(kind: vtFunc, funcValue: assertfunc))
 
 proc findMainFunction(interpreter: Interpreter): Option[Value] =
   if interpreter.globals.values.hasKey("main"):
