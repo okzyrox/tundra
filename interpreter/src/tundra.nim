@@ -1,12 +1,13 @@
+import tundrapkg/utils
+import tundrapkg/lex
+import tundrapkg/parser
+import tundrapkg/analyzer
+import tundrapkg/interpreter as interp
 
-import nobapkg/utils
-import nobapkg/lex
-import nobapkg/parser
-import nobapkg/analyzer
-import nobapkg/interpreter as interp
+import os
 
-const NOBA_VERSION {.strdefine.}:string = "0.0.1-alpha"
-const NOBA_COMMIT {.strdefine.}:string = "0"
+const TUNDRA_VERSION {.strdefine.}: string = "0.0.1-alpha"
+const TUNDRA_COMMIT {.strdefine.}: string = "0"
 
 
 proc run(source: string) =
@@ -39,16 +40,22 @@ proc run(source: string) =
     print "Interpretation complete"
   
 proc getVersion(): void =
-  echo "Version: " & NOBA_VERSION
-  echo "Commit: " & NOBA_COMMIT
+  echo "-- Tundra Interpreter --"
+  echo "Version: " & TUNDRA_VERSION
+  echo "Commit: " & TUNDRA_COMMIT
 
 proc main(file_path: string = "", version: bool = false): void =
   if file_path != "":
-    let source = readFile(file_path)
-    run(source)
+    if fileExists(file_path):
+      let source = readFile(file_path)
+      run(source)
+    else:
+      echo "File not found: ", file_path
   elif version:
     getVersion()
+  else:
+    echo "No file path provided. Use --help for more information."
 
 when isMainModule:
-  import cligen; dispatch main, help = {"file_path": "The path to the file to run (.noba extension)",
+  import cligen; dispatch main, help = {"file_path": "The path to the file to run (.td extension)",
   "version": "Build version"}

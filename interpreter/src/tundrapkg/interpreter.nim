@@ -26,6 +26,7 @@ type
   Interpreter = ref object
     globals: Environment
     environment: Environment
+    functionDeclarations*: Table[string, Node] # used for type checking and whatnot
 
 proc `==`(a, b: Value): bool =
   if a.kind != b.kind:
@@ -55,7 +56,15 @@ proc `==`(a, b: Value): bool =
 proc `!=`(a, b: Value): bool =
   not (a == b)
   
-
+proc getValueType(value: Value): string =
+  case value.kind
+  of vtInt: return "int"
+  of vtFloat: return "float"
+  of vtString: return "string"
+  of vtBool: return "bool"
+  of vtNil: return "nil"
+  of vtFunc: return "function"
+  else: return "unknown"
 
 proc newEnvironment(parent: Environment = nil): Environment =
   Environment(values: initTable[string, Value](), parent: parent)
@@ -65,6 +74,7 @@ proc newInterpreter*(): Interpreter =
   new(result)
   result.globals = globals
   result.environment = globals
+  result.functionDeclarations = initTable[string, Node]()
 
 proc define(env: Environment, name: string, value: Value) =
   env.values[name] = value
@@ -215,6 +225,7 @@ proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
     return result
 
   interpreter.environment.define(node.fnName, Value(kind: vtFunc, funcValue: function))
+  interpreter.functionDeclarations[node.fnName] = node
 
 proc evaluateUnaryExpr(interpreter: Interpreter, node: Node): Value =
   let operand = interpreter.evaluate(node.operand)
@@ -268,57 +279,105 @@ proc evaluateReturnStmt(interpreter: Interpreter, node: Node): Value =
   return interpreter.evaluate(node.returnValue)
 
 proc evaluateCall(interpreter: Interpreter, node: Node): Value =
-  let callee = interpreter.evaluate(node.callee)
-  var arguments: Value = Value(kind: vtArgs, argsValue: @[])
+  let callee = interpreter.evaluate(node.callee) # whatever we're trying to call
+  var arguments: Value = Value(kind: vtArgs, argsValue: @[]) # arguments to pass to the callee
+  
+  var funcName = ""
+  if node.callee.kind == nkIdentifier:
+    funcName = node.callee.identifierName
+  
   for arg in node.arguments:
     arguments.argsValue.add(interpreter.evaluate(arg))
   
   if callee.kind != vtFunc:
     raise newException(ValueError, "Can only call functions.")
+  
+  if funcName != "":
+    # todo: give interpreter knowledge of builtins available
+    for fn in ["println", "print", "assert", "read", "readln"]:
+      if funcName == fn:
+        return callee.funcValue(arguments)
+    
+    for stmt in interpreter.globals.values.keys:
+      if stmt == funcName:
+        let funcVal = interpreter.globals.values[stmt]
+        if funcVal.kind == vtFunc:
+          var fnDecl = interpreter.functionDeclarations.getOrDefault(funcName)
+          if fnDecl != nil:
+            # check invalid argument count
+            if fnDecl.params.len != arguments.argsValue.len:
+              raise newException(ValueError, "Function '" & funcName & "' expects " & 
+                $fnDecl.params.len & " arguments, got " & $arguments.argsValue.len)
+            
+            for i in 0..<fnDecl.params.len:
+              let expectedType = fnDecl.params[i].typ
+              let argValue = arguments.argsValue[i]
+              let actualType = getValueType(argValue)
+              
+              # check type mismatch
+              # todo: potentially add support for implicit type conversion
+              # dunno how to represent that well without making it look bad
+              if expectedType != actualType and expectedType != "any" and 
+                 not (expectedType == "float" and actualType == "int"):
+                raise newException(ValueError, "Type mismatch in call to '" & funcName & 
+                  "'. Parameter '" & fnDecl.params[i].name & "' expects '" & 
+                  expectedType & "', got '" & actualType & "'")
+  
+  # run the function if it's all good
   return callee.funcValue(arguments)
 
 proc evaluate(interpreter: Interpreter, node: Node): Value =
   print "evaluating ", node.kind
-  case node.kind
-  of nkProgram:
-    var lastValue = Value(kind: vtNil)
-    for statement in node.statements:
-      lastValue = interpreter.evaluate(statement)
-    return lastValue
-  of nkLiteral:
-    case node.literalType
-    of "int": return Value(kind: vtInt, intValue: parseInt(node.literalValue))
-    of "float": return Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
-    of "string": return Value(kind: vtString, stringValue: node.literalValue)
-    of "operator": return Value(kind: vtOperator, binaryExpr: node)
-
-    else: raise newException(ValueError, "Unknown literal type")
-  of nkIdentifier:
-    return interpreter.environment.get(node.identifierName)
-  of nkBinaryExpr:
-    return interpreter.evaluateBinaryExpr(node)
-  of nkUnaryExpr:
-    return interpreter.evaluateUnaryExpr(node)
-  of nkVarDecl:
-    return interpreter.evaluateVarDecl(node)
-  of nkConstDecl:
-    interpreter.evaluateConstDecl(node)
-    return Value(kind: vtNil)
-  of nkFunctionDecl:
-    interpreter.evaluateFuncDecl(node)
-    return Value(kind: vtNil)
-  of nkIfStmt:
-    return interpreter.evaluateIfStmt(node)
-  of nkWhileStmt:
-    return interpreter.evaluateWhileStmt(node)
-  of nkForStmt:
-    return interpreter.evaluateForStmt(node)
-  of nkReturnStmt:
-    return interpreter.evaluateReturnStmt(node)
-  of nkExprStmt:
-    return interpreter.evaluate(node.expr)
-  of nkCall:
-    return interpreter.evaluateCall(node)
+  try:
+    case node.kind
+    of nkProgram:
+      var lastValue = Value(kind: vtNil)
+      for statement in node.statements:
+        lastValue = interpreter.evaluate(statement)
+      return lastValue
+    of nkLiteral:
+      case node.literalType
+      of "int": return Value(kind: vtInt, intValue: parseInt(node.literalValue))
+      of "float": return Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
+      of "string": return Value(kind: vtString, stringValue: node.literalValue)
+      of "operator": return Value(kind: vtOperator, binaryExpr: node)
+      of "error": 
+        echo node.literalValue
+        quit(1)
+      else: raise newException(ValueError, "Unknown literal type")
+    of nkIdentifier:
+      return interpreter.environment.get(node.identifierName)
+    of nkBinaryExpr:
+      return interpreter.evaluateBinaryExpr(node)
+    of nkUnaryExpr:
+      return interpreter.evaluateUnaryExpr(node)
+    of nkVarDecl:
+      return interpreter.evaluateVarDecl(node)
+    of nkConstDecl:
+      interpreter.evaluateConstDecl(node)
+      return Value(kind: vtNil)
+    of nkFunctionDecl:
+      interpreter.evaluateFuncDecl(node)
+      return Value(kind: vtNil)
+    of nkIfStmt:
+      return interpreter.evaluateIfStmt(node)
+    of nkWhileStmt:
+      return interpreter.evaluateWhileStmt(node)
+    of nkForStmt:
+      return interpreter.evaluateForStmt(node)
+    of nkReturnStmt:
+      return interpreter.evaluateReturnStmt(node)
+    of nkExprStmt:
+      return interpreter.evaluate(node.expr)
+    of nkCall:
+      return interpreter.evaluateCall(node)
+    else:
+      raise newException(ValueError, "Unexpected node type: " & $node.kind)
+  except:
+    echo "Error: ", getCurrentExceptionMsg()
+    quit(1)
+    #return Value(kind: vtNil)
+    
   #else:
   #  raise newException(ValueError, "Unexpected node type: " & $node.kind)
 
@@ -336,14 +395,19 @@ proc findMainFunction(interpreter: Interpreter): Option[Value] =
 ##
 proc interpret*(interpreter: Interpreter, node: Node) =
   print("interpreting")
-  discard interpreter.evaluate(node)
-
-  # Attempts to find a main function if it exists, otherwise we bail for now
-  let mainFunc = interpreter.findMainFunction()
-  if mainFunc.isSome:
-    print("Calling main function")
-    discard interpreter.evaluateCall(Node(kind: nkCall, callee: Node(
-        kind: nkIdentifier, identifierName: "main"), arguments: @[]))
-  else:
-    echo "No main function found, create a function named 'main' to run your program."
-    echo "Exiting"
+  try:
+    # Attempts to find a main function if it exists, otherwise we bail for now
+    discard interpreter.evaluate(node)
+    let mainFunc = interpreter.findMainFunction()
+    if mainFunc.isSome:
+      print("Calling main function")
+      discard interpreter.evaluateCall(Node(kind: nkCall, callee: Node(
+          kind: nkIdentifier, identifierName: "main"), arguments: @[]))
+    else:
+      echo "No main function found, create a function named 'main' to run your program."
+      quit(0)
+  except:
+    let e = getCurrentException()
+    let msg = getCurrentExceptionMsg()
+    echo "Error: ", msg
+    quit(1)

@@ -31,8 +31,14 @@ fn main() {
 
     var a = 1 + 2 * 3
     println(a) 
-    // currently results in 9, due to (1 + 2) * (3)
-    // should be 7, due to 1 + (2 * 3)
-    //assert(a, 7, "a should be 7")
+    assert(a, 7, "a should be 7")
+
+    // Negation
+
+    var b = 9
+    var negativeB = -b
+
+    println(negativeB)
+    assert(negativeB, -9, "negativeB should be -9")
 
 }

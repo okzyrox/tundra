@@ -1,13 +1,8 @@
-# NB-LANG
-"Not-Bad language"
-
+# Tundra language
 An opionated theoretical language
-
-File suffix: `.nb`, `.nbs`, `.noba`
-
+File suffix: `.td`
 
 ## Structure
-
 
 ### Keywords
 
@@ -117,7 +112,7 @@ When using multiple files for your project, you may not want all features of a f
 This is where public and private annotations come in.
 
 
-Say you have a file called `hello.nb`:
+Say you have a file called `hello.td`:
 By default, any expressions in the file are public, but can be made private using the `priv` keyword.
 `private` expessions can only be accessed in the same file.
 ```rust
@@ -133,7 +128,7 @@ pub fn hello() {
 
 ```
 
-Now in our main module (`main.nb`):
+Now in our main module (`main.td`):
 
 ```c
 import hello
@@ -326,38 +321,38 @@ Modules are essentially groups of files, that can all be accessed by importing t
 
 consider this file structure:
 
--> main.nb
+-> main.td
 
--> hello.nb
+-> hello.td
 
 VS
 
--> main.nb
+-> main.td
 
 -> greetings/
 
-    -> hello.nb
+    -> hello.td
 
-    -> goodbye.nb
+    -> goodbye.td
 
-    -> mod.nb
-
-
-For `mod.nb`, it simply initialises the module info and defines all the components
+    -> mod.td
 
 
-`mod.nb`
+For `mod.td`, it simply initialises the module info and defines all the components
+
+
+`mod.td`
 
 ```go
 import hello
 import goodbye
 
-export hello, goodbye // Used to `send` the imports back to `main.nb` when it imports `greetings`
+export hello, goodbye // Used to `send` the imports back to `main.td` when it imports `greetings`
 
 //...
 ```
 
-`hello.nb`
+`hello.td`
 ```go
 
 pub fn hello() {
@@ -366,7 +361,7 @@ pub fn hello() {
 
 ```
 
-`goodbye.nb`
+`goodbye.td`
 ```go
 
 pub fn goodbye() {
@@ -375,15 +370,15 @@ pub fn goodbye() {
 
 ```
 
-When importing from `main.nb`:
+When importing from `main.td`:
 
 - Calling `import greetings.hello` will import the `hello` module from the `greetings` directory
-- Calling `import greetings` will import the `mod.nb` file from the `greetings` directory, which imports `hello` and `goodbye`
+- Calling `import greetings` will import the `mod.td` file from the `greetings` directory, which imports `hello` and `goodbye`
 
 Therefore:
 
 ```go
-import greetings.hello // `greetings/hello.nb`
+import greetings.hello // `greetings/hello.td`
 
 hello() // >>> Hello, World!
 goodbye() // Error: Unknown function "goodbye"
@@ -392,7 +387,7 @@ goodbye() // Error: Unknown function "goodbye"
 ```
 
 ```go
-import greetings // `greetings/mod.nb`
+import greetings // `greetings/mod.td`
 
 hello() // >>> Hello, World!
 goodbye() // >>> Goodbye!
@@ -782,7 +777,7 @@ Loops can be used in NB.
 
 #### For loop
 
-```go
+```rust
 
 for (var i in 0..10) do { // Variable designed as a loop range of integers
     println(i)
@@ -819,7 +814,7 @@ for (var username, user in users) do { // Both fields of table specified
 
 While loops are similar to for loops, but they can only be used inside a `while` block and are often good for iterating a unknown amount of times.
 
-```c
+```go
 
 var running = true
 var i = 0
@@ -840,7 +835,7 @@ while (running) do {
 
 The `do` part of the while loop doesnt necessarily have to be a scope, but could be a function call instead.
 
-```c
+```go
 
 var i = 1
 
@@ -897,9 +892,9 @@ In order to run it, it needs a `main` function defined in the `main` module.
 
 This can be done by defining the modulename code in the main script, and then creating a `main` function.
 
-```cpp
+```js
 
-@module main // This is optional depending on whether the filename is called `main.nb`. It is not required if the filename is `main.nb`
+@module main // This is optional depending on whether the filename is called `main.td`. It is not required if the filename is `main.td`
 
 fn main() {
     println("Hello, World!")

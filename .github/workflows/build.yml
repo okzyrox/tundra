@@ -24,13 +24,13 @@ jobs:
         run: cd interpreter && nimble install -Y
 
       - name: Build for Windows
-        run: cd interpreter && nimble build -d:NOBA_COMMIT=${{steps.git_short_hash.outputs.result}}
+        run: cd interpreter && nimble build -d:TUNDRA_COMMIT=${{steps.git_short_hash.outputs.result}}
   
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
           name: noba
-          path: bin/nb.exe    
+          path: bin/tundra.exe    
   # build-linux:
   #   runs-on: ubuntu-latest
   #   steps:

@@ -14,4 +14,6 @@ fn main() {
     var y = 1 + 2
     println(x)
     println(y)
+
+    assert(x, y, "x should equal y")
 }

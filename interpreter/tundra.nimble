@@ -2,15 +2,15 @@
 
 version       = "0.0.1"
 author        = "ZyroX"
-description   = "nb-interpreter"
+description   = "Tundra Interpreter"
 license       = "MIT"
 srcDir        = "src"
 installExt    = @["nim"]
-bin           = @["nb"]
+bin           = @["tundra"]
 binDir        = "../bin"
 
 
 # Dependencies
 
-requires "nim >= 2.0.0"
+requires "nim >= 2.2.2"
 requires "cligen >= 1.7.3"

@@ -1,12 +1,8 @@
-# nb-lang
+# Tundra
 
-was tired and though "hey this would be cool ngl", but im too untalented to ever write such a thing.
+was tired and thought "hey this would be cool ngl", but im too untalented to ever write such a thing.
 
-read the spec at: `./NBLANG.md`
-
-idk MAYBE ill make a parser/interpreter for it
-
-MAYBE
+read at: `./2am-writeup.md`
 
 ## How to run?
 
@@ -14,23 +10,20 @@ MAYBE
 
 - nim 2.0.8
 
-```bat
-
+```sh
 cd interpreter
 nimble build
 ```
-will build the interpreter (noba)
 
+will build the interpreter
 then you can run it like this:
 
 ```sh
 
-noba -f=filename.noba
+tundra -f=filename.td
 
 ```
 
-
-
 ## Code Highlighting
 
-- [**vscode**](https://github.com/okzyrox/nb-highlighter.git)
+- [**vscode**](https://github.com/okzyrox/td-highlighter.git)
