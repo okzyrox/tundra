@@ -26,4 +26,4 @@ tundra -f=filename.td
 
 ## Code Highlighting
 
-- [**vscode**](https://github.com/okzyrox/td-highlighter.git)
+- [**vscode**](https://github.com/okzyrox/tundra-vscode.git)
