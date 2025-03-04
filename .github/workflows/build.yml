@@ -29,7 +29,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: noba
+          name: tundra
           path: bin/tundra.exe    
   # build-linux:
   #   runs-on: ubuntu-latest
