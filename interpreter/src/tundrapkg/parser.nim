@@ -114,7 +114,6 @@ proc parseAdditive(parser: var Parser): Node =
 
 proc parseComparison(parser: var Parser): Node =
   var left = parser.parseAdditive()
-  # todo: "<", "<=", ">", ">="
   while parser.check(tkOperator) and parser.peek().lexeme in ["==", "!=", "<", "<=", ">", ">="]:
     let operator = parser.advance().lexeme
     let right = parser.parseAdditive()
@@ -123,7 +122,6 @@ proc parseComparison(parser: var Parser): Node =
   return left
 
 proc parseExpression(parser: var Parser): Node =
-  #return parser.parseAdditive()
   return parser.parseComparison()
 
 proc parseVarDecl(parser: var Parser): Node =
