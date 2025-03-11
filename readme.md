@@ -1,6 +1,6 @@
 # Tundra
 
-was tired and thought "hey this would be cool ngl", but im too untalented to ever write such a thing.
+was tired and thought "hey this would be cool ngl", but im too untalented to ever write such a thing. and then i did it anyway
 
 read at: `./2am-writeup.md`
 
@@ -8,14 +8,13 @@ read at: `./2am-writeup.md`
 
 #### Requirements:
 
-- nim 2.0.8
+- nim 2.2.2+ (may work on older versions)
 
 ```sh
 cd interpreter
 nimble build
 ```
 
-will build the interpreter
 then you can run it like this:
 
 ```sh
