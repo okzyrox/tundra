@@ -11,5 +11,5 @@ fn main() {
     */
 
     println(a)
-    assert(a, 2, "a should be 2")
+    assert(a == 2, "a should be 2")
 }

@@ -5,6 +5,6 @@ fn main() {
     var d = "Hi," + 1
     println(c)
     println(d)
-    assert(c, "Hello, World!", "c should be 'Hello, World!'")
-    assert(d, "Hi,1", "d should be 'Hi,1'")
+    assert(c == "Hello, World!", "c should be 'Hello, World!'")
+    assert(d == "Hi,1", "d should be 'Hi,1'")
 }

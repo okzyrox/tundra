@@ -195,10 +195,24 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
         return Value(kind: vtFloat, floatValue: left.floatValue / right.floatValue)
     else:
       discard
+  of "%":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtInt, intValue: left.intValue mod right.intValue)
+      else:
+        discard
+    else:
+      discard
+  of "==":
+    return Value(kind: vtBool, boolValue: left == right)
+  of "!=":
+    return Value(kind: vtBool, boolValue: left != right)
   of ",":
     return Value(kind: vtArgs, argsValue: @[left, right])
 
-  raise newException(ValueError, "Invalid operator for types")
+  raise newException(ValueError, "Invalid operator for types " & 
+    getValueType(left) & " and " & getValueType(right) & "are not compatible with " & node.operator)
 
 proc evaluateVarDecl(interpreter: Interpreter, node: Node): Value =
   let value = interpreter.evaluate(node.value)
@@ -230,6 +244,11 @@ proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
 proc evaluateUnaryExpr(interpreter: Interpreter, node: Node): Value =
   let operand = interpreter.evaluate(node.operand)
   case node.unaryOperator
+  of "+":
+    case operand.kind
+    of vtInt: return Value(kind: vtInt, intValue: +operand.intValue)
+    of vtFloat: return Value(kind: vtFloat, floatValue: +operand.floatValue)
+    else: raise newException(ValueError, "Invalid operand for plus")
   of "-":
     case operand.kind
     of vtInt: return Value(kind: vtInt, intValue: -operand.intValue)
@@ -340,6 +359,7 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       of "int": return Value(kind: vtInt, intValue: parseInt(node.literalValue))
       of "float": return Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
       of "string": return Value(kind: vtString, stringValue: node.literalValue)
+      of "bool": return Value(kind: vtBool, boolValue: parseBool(node.literalValue))
       of "operator": return Value(kind: vtOperator, binaryExpr: node)
       of "error": 
         echo node.literalValue

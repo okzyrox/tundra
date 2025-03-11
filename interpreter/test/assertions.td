@@ -10,9 +10,9 @@ fn main() {
     println(c)
     println(d)
 
-    assert(a, "Hi!", "a should be 'Hi!'")
-    assert(b, 1, "b should be 1")
-    assert(c, 3.14, "c should be 3.14")
-    assert(d, 2.5, "d should be 2.5")
+    assert(a == "Hi!", "a should be 'Hi!'")
+    assert(b == 1, "b should be 1")
+    assert(c == 3.14, "c should be 3.14")
+    assert(d == 2.5, "d should be 2.5")
 
 }

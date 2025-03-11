@@ -12,6 +12,7 @@ type TokenKind* = enum
   tkInt
   tkFloat
   tkString
+  tkBool
   tkSymbol
   tkComment
   tkOperator
@@ -29,6 +30,7 @@ proc `$`*(kind: TokenKind): string =
   of tkInt: "Integer"
   of tkFloat: "Float"
   of tkString: "String"
+  of tkBool: "Boolean"
   of tkSymbol: "Symbol"
   of tkComment: "Comment"
   of tkOperator: "Operator"
@@ -86,10 +88,21 @@ proc readToken(lexer: var Lexer) =
   of ')': lexer.addToken(tkBracketClose)
   of '{': lexer.addToken(tkBraceOpen)
   of '}': lexer.addToken(tkBraceClose)
-  of '=': lexer.addToken(tkEquals)
+  of '=': 
+    if not lexer.atEnd() and lexer.source[lexer.current] == '=':
+      discard lexer.advance() # ==
+      lexer.addToken(tkOperator)
+    else:
+      lexer.addToken(tkEquals)
   of ':': lexer.addToken(tkSymbol)
   of ',': lexer.addToken(tkSymbol)
-  of '+', '-', '*', '/':
+  of '!':
+    if not lexer.atEnd() and lexer.source[lexer.current] == '=':
+      discard lexer.advance() # !=
+      lexer.addToken(tkOperator)
+    else:
+      lexer.addToken(tkOperator)
+  of '+', '-', '*', '/', '%', '^':
       if c == '/' and not lexer.atEnd():
           if lexer.source[lexer.current] == '/': # Single-line comment
               discard lexer.advance()
@@ -145,6 +158,8 @@ proc readToken(lexer: var Lexer) =
           let lexeme = lexer.source[lexer.start..<lexer.current]
           if lexeme in ["var", "const", "if", "else", "while", "for", "fn", "return"]:
               lexer.addToken(tkKeyword)
+          elif lexeme in ["true", "false"]:
+              lexer.addToken(tkBool)
           else:
               lexer.addToken(tkIdent)
       else:

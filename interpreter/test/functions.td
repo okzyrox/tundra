@@ -15,5 +15,5 @@ fn main() {
     println(x)
     println(y)
 
-    assert(x, y, "x should equal y")
+    assert(x == y, "x should equal y")
 }

@@ -60,6 +60,8 @@ proc parsePrimary(parser: var Parser): Node =
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "float")
     elif parser.match(tkString):
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "string")
+    elif parser.match(tkBool):
+      return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "bool")
     elif parser.match(tkIdent):
       let identifier = Node(kind: nkIdentifier, identifierName: parser.tokens[parser.current - 1].lexeme)
       if parser.match(tkBracketOpen):
@@ -77,7 +79,7 @@ proc parsePrimary(parser: var Parser): Node =
     return Node(kind: nkLiteral, literalValue: "ERROR -" & getCurrentExceptionMsg(), literalType: "error")
 
 proc parseUnary(parser: var Parser): Node =
-  if parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["+", "-"]:
+  if parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["+", "-", "!"]:
     let operator = parser.tokens[parser.current - 1].lexeme
     let right = parser.parseUnary()
     return Node(kind: nkUnaryExpr, operand: right, unaryOperator: operator)
@@ -86,7 +88,7 @@ proc parseUnary(parser: var Parser): Node =
 proc parseMultiplicative(parser: var Parser): Node =
   var left = parser.parseUnary()
   
-  while parser.check(tkOperator) and parser.peek().lexeme in ["*", "/"]:
+  while parser.check(tkOperator) and parser.peek().lexeme in ["*", "/", "%", "^"]:
     let operator = parser.advance().lexeme
     let right = parser.parseUnary()
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
@@ -103,8 +105,19 @@ proc parseAdditive(parser: var Parser): Node =
   
   return left
 
+proc parseComparison(parser: var Parser): Node =
+  var left = parser.parseAdditive()
+  # todo: "<", "<=", ">", ">="
+  while parser.check(tkOperator) and parser.peek().lexeme in ["==", "!="]:
+    let operator = parser.advance().lexeme
+    let right = parser.parseAdditive()
+    left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
+  
+  return left
+
 proc parseExpression(parser: var Parser): Node =
-  return parser.parseAdditive()
+  #return parser.parseAdditive()
+  return parser.parseComparison()
 
 proc parseVarDecl(parser: var Parser): Node =
   discard parser.advance() # consume 'var'
