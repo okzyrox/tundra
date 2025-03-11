@@ -208,6 +208,46 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
     return Value(kind: vtBool, boolValue: left == right)
   of "!=":
     return Value(kind: vtBool, boolValue: left != right)
+  of ">":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtBool, boolValue: left.intValue > right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtBool, boolValue: left.floatValue > right.floatValue)
+    else:
+      discard
+  of "<":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtBool, boolValue: left.intValue < right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtBool, boolValue: left.floatValue < right.floatValue)
+    else:
+      discard
+  of ">=":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtBool, boolValue: left.intValue >= right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtBool, boolValue: left.floatValue >= right.floatValue)
+    else:
+      discard
+  of "<=":
+    case left.kind
+    of vtInt:
+      if right.kind == vtInt:
+        return Value(kind: vtBool, boolValue: left.intValue <= right.intValue)
+    of vtFloat:
+      if right.kind == vtFloat:
+        return Value(kind: vtBool, boolValue: left.floatValue <= right.floatValue)
+    else:
+      discard
   of ",":
     return Value(kind: vtArgs, argsValue: @[left, right])
 
@@ -267,19 +307,63 @@ proc evaluateConstDecl(interpreter: Interpreter, node: Node) =
   interpreter.environment.define(node.name, value)
   # Unfinished
 
+# proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
+#   let condition = interpreter.evaluate(node.condition)
+#   if condition.kind != vtBool:
+#     raise newException(ValueError, "If condition must be a boolean")
+  
+#   if condition.boolValue:
+#     for stmt in node.thenBranch:
+#       result = interpreter.evaluate(stmt)
+#       if stmt.kind == nkReturnStmt:
+#         return result
+#   elif node.elseBranch.len > 0:
+#     for stmt in node.elseBranch:
+#       result = interpreter.evaluate(stmt)
+#       if stmt.kind == nkReturnStmt:
+#         return result
+#   else:
+#     result = Value(kind: vtNil)
+
 proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
   let condition = interpreter.evaluate(node.condition)
   if condition.kind != vtBool:
     raise newException(ValueError, "If condition must be a boolean")
+  
   if condition.boolValue:
+    # new env; new scope
+    let prevEnv = interpreter.environment
+    interpreter.environment = newEnvironment(prevEnv)
+    
+    var result = Value(kind: vtNil)
     for stmt in node.thenBranch:
       result = interpreter.evaluate(stmt)
+      if stmt.kind == nkReturnStmt:
+        interpreter.environment = prevEnv
+        return result
+    
+    # restore
+    interpreter.environment = prevEnv
+    return result
   elif node.elseBranch.len > 0:
+    # other branches need new environments too
+    let prevEnv = interpreter.environment
+    interpreter.environment = newEnvironment(prevEnv)
+
+    var result = Value(kind: vtNil)
     for stmt in node.elseBranch:
       result = interpreter.evaluate(stmt)
+      if stmt.kind == nkReturnStmt:
+        interpreter.environment = prevEnv
+        return result
+    
+    # restore
+    interpreter.environment = prevEnv
+    return result
   else:
-    result = Value(kind: vtNil)
+    return Value(kind: vtNil)
 
+# Unfinished
 proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
   while true:
     let condition = interpreter.evaluate(node.loopCondition)
@@ -287,8 +371,16 @@ proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
       raise newException(ValueError, "While condition must be a boolean")
     if not condition.boolValue:
       break
+    
+    let prevEnv = interpreter.environment
+    interpreter.environment = newEnvironment(prevEnv)
+    
     for stmt in node.loopBody:
       discard interpreter.evaluate(stmt)
+      
+    # restore
+    interpreter.environment = prevEnv
+  
   return Value(kind: vtNil)
 
 proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =

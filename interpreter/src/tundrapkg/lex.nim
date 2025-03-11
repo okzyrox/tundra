@@ -102,6 +102,12 @@ proc readToken(lexer: var Lexer) =
       lexer.addToken(tkOperator)
     else:
       lexer.addToken(tkOperator)
+  of '<', '>':
+    if not lexer.atEnd() and lexer.source[lexer.current] == '=':
+        discard lexer.advance()
+        lexer.addToken(tkOperator)
+    else:
+        lexer.addToken(tkOperator)
   of '+', '-', '*', '/', '%', '^':
       if c == '/' and not lexer.atEnd():
           if lexer.source[lexer.current] == '/': # Single-line comment
@@ -156,7 +162,7 @@ proc readToken(lexer: var Lexer) =
           while not lexer.atEnd() and (lexer.source[lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
               discard lexer.advance()
           let lexeme = lexer.source[lexer.start..<lexer.current]
-          if lexeme in ["var", "const", "if", "else", "while", "for", "fn", "return"]:
+          if lexeme in ["var", "const", "if", "else", "elseif", "while", "for", "fn", "return"]:
               lexer.addToken(tkKeyword)
           elif lexeme in ["true", "false"]:
               lexer.addToken(tkBool)

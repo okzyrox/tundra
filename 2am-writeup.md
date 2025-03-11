@@ -226,10 +226,12 @@ do_something(5, 10)
 Standard basic types available by default are:
 
 - `char`
-- `string`
-- `int` (prefixable; e.g.: `int64`, `int32`, `int8`, default: int64)
-- `float` (prefixable; e.g.: `float64`, `float32`, default: float64)
-- `bool`
+- [x] `string`
+- [x] `int` 
+- [ ] (prefixable; e.g.: `int64`, `int32`, `int8`, default: int64)
+- [x] `float` 
+- [ ] (prefixable; e.g.: `float64`, `float32`, default: float64)
+- [x] `bool`
 - `array`
 - `table`
 - `nil` a type and a value (in other words: `None`, `null`, `void`, `nothing`, `undefined`. Unassigned variables have this by default)
@@ -238,12 +240,12 @@ Standard basic types available by default are:
 
 #### Math Operators
 
-- `+`
-- `-`
-- `*`
-- `/`
-- `%`
-- `^`
+- [x] `+`
+- [x] `-`
+- [x] `*`
+- [x] `/`
+- [x] `%`
+- [x] `^`
 and..
 
 - `+=` (shorthand for: `a = a + b`)
@@ -256,12 +258,12 @@ and..
 
 #### Comparison and Determination Operators
 
-- `==`
-- `!=`
-- `>`
-- `<`
-- `>=`
-- `<=`
+- [x] `==`
+- [x] `!=`
+- [x] `>`
+- [x] `<`
+- [x] `>=`
+- [x] `<=`
 
 
 #### Other Operators
@@ -293,21 +295,21 @@ var a = 5
 var b = "10"
 var c: int
 
-if (a == string and b == int) { // Evals to: `typeof(a) == string and typeof(b) == int`
+if (a is string and b is int) { // Evals to: `typeof(a) == string and typeof(b) == int`
     println("a is a string")
     println("b is an int")
-} else if (a == int and b == string) { // Evals to: `typeof(a) == int and typeof(b) == string`
+} else if (a is int and b is string) { // Evals to: `typeof(a) == int and typeof(b) == string`
     println("a is an int")
     println("b is a string")
-} else if (a == int and b == int) { // Evals to: `typeof(a) == int and typeof(b) == int`
+} else if (a is int and b is int) { // Evals to: `typeof(a) == int and typeof(b) == int`
     println("They are both integers")
-} else if (a == int or b == int) { // Evals to: `typeof(a) == int or typeof(b) == int`
+} else if (a is int or b is int) { // Evals to: `typeof(a) == int or typeof(b) == int`
     println("One of them is an integer")
 } else {
     println("I don't know what this is")
 }
 
-if (c == nil) {
+if (c is nil) {
     println($"c is {typeof(c)}") // >>> c is int
     println($"c = {c}") // >>> c = nil
 }

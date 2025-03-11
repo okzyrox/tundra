@@ -9,6 +9,8 @@ type Parser = object
   tokens: seq[Token]
   current: int
 
+type ParserError = object of ValueError
+
 proc newParser*(tokens: seq[Token]): Parser =
   Parser(tokens: tokens, current: 0)
 
@@ -32,15 +34,20 @@ proc check(parser: Parser, kind: TokenKind): bool =
   if parser.atEnd(): return false
   parser.peek().kind == kind
 
+proc throwParserError(parser: var Parser, message: string, got: bool = false) =
+  let token = parser.peek()
+  var errorMsg = "Line " & $token.line & ", Col " & $token.column & ": " & message
+  if got:
+    errorMsg = errorMsg & " Got '" & token.lexeme & "' instead."
+  raise newException(ParserError, errorMsg)
+
 proc consume(parser: var Parser, kind: TokenKind, message: string): Token =
   if parser.check(kind): return parser.advance()
-  let token = parser.peek()
-  let errorMsg = "Line " & $token.line & ", Col " & $token.column & ": " & message & 
-                " Got '" & token.lexeme & "' instead."
-  raise newException(ValueError, errorMsg)
+  # otherwise..:
+  throwParserError(parser, message, true)
 
 proc parseExpression(parser: var Parser): Node
-proc parseStatement(parser: var Parser): Node
+proc parseStmt(parser: var Parser): Node
 
 proc parseCall(parser: var Parser, callee: Node): Node =
   var arguments: seq[Node] = @[]
@@ -108,7 +115,7 @@ proc parseAdditive(parser: var Parser): Node =
 proc parseComparison(parser: var Parser): Node =
   var left = parser.parseAdditive()
   # todo: "<", "<=", ">", ">="
-  while parser.check(tkOperator) and parser.peek().lexeme in ["==", "!="]:
+  while parser.check(tkOperator) and parser.peek().lexeme in ["==", "!=", "<", "<=", ">", ">="]:
     let operator = parser.advance().lexeme
     let right = parser.parseAdditive()
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
@@ -142,6 +149,8 @@ proc parseFunctionDecl(parser: var Parser): Node =
       let paramName = parser.consume(tkIdent, "Expected parameter name.").lexeme
       discard parser.consume(tkSymbol, "Expected ':' after parameter name.")
       let paramType = parser.consume(tkIdent, "Expected parameter type.").lexeme
+      if not (paramType in ["int", "float", "string", "bool"]):
+        throwParserError(parser, "Invalid parameter type: '" & paramType & "'.", false)
       params.add((name: paramName, typ: paramType))
       if not parser.check(tkSymbol) or parser.peek().lexeme != ",": break
       discard parser.advance() # consume ','
@@ -151,11 +160,40 @@ proc parseFunctionDecl(parser: var Parser): Node =
   var body: seq[Node] = @[]
   while not parser.check(tkBraceClose):
     if parser.atEnd(): break
-    body.add(parser.parseStatement())
+    body.add(parser.parseStmt())
   discard parser.consume(tkBraceClose, "Expected '}' after function body.")
   Node(kind: nkFunctionDecl, fnName: name, params: params, body: body)
 
-proc parseExpressionStatement(parser: var Parser): Node =
+proc parseIfStmt(parser: var Parser): Node =
+  discard parser.advance() # consume 'if'
+  discard parser.consume(tkBracketOpen, "Expected '(' after 'if'.")
+  let condition = parser.parseExpression()
+  discard parser.consume(tkBracketClose, "Expected ')' after condition.")
+  discard parser.consume(tkBraceOpen, "Expected '{' before if body.")
+  
+  var thenBranch: seq[Node] = @[]
+  while not parser.check(tkBraceClose) and not parser.atEnd():
+    thenBranch.add(parser.parseStmt())
+  
+  discard parser.consume(tkBraceClose, "Expected '}' after if body.")
+  
+  var elseBranch: seq[Node] = @[]
+  if parser.check(tkKeyword) and parser.peek().lexeme == "else":
+    discard parser.advance() # 'else'
+    
+    if parser.check(tkKeyword) and parser.peek().lexeme == "if":
+      # else if case
+      let elseIfNode = parser.parseIfStmt() # essentially like a nested if
+      elseBranch.add(elseIfNode)
+    else:
+      discard parser.consume(tkBraceOpen, "Expected '{' before else body.")
+      while not parser.check(tkBraceClose) and not parser.atEnd():
+        elseBranch.add(parser.parseStmt())
+      discard parser.consume(tkBraceClose, "Expected '}' after else body.")
+  
+  return Node(kind: nkIfStmt, condition: condition, thenBranch: thenBranch, elseBranch: elseBranch)
+
+proc parseExpressionStmt(parser: var Parser): Node =
   let expr = parser.parseExpression()
   if parser.peek().kind == tkSymbol and parser.peek().lexeme == ";":
     discard parser.advance()
@@ -166,7 +204,7 @@ proc parseReturnStmt(parser: var Parser): Node =
   let value = parser.parseExpression()
   Node(kind: nkReturnStmt, returnValue: value)
 
-proc parseStatement(parser: var Parser): Node =
+proc parseStmt(parser: var Parser): Node =
   print "Parsing statement, current token: ", parser.peek().kind
   try:
     if parser.peek().kind == tkKeyword:
@@ -175,23 +213,27 @@ proc parseStatement(parser: var Parser): Node =
         return parser.parseVarDecl()
       of "fn":
         return parser.parseFunctionDecl()
+      of "if":
+        return parser.parseIfStmt()
       of "return":
         return parser.parseReturnStmt()
       else:
         echo "Unexpected keyword: ", parser.peek().lexeme
         return Node(kind: nkExprStmt, expr: parser.parseExpression())
     elif parser.peek().kind == tkIdent:
-      return parser.parseExpressionStatement()
+      return parser.parseExpressionStmt()
     elif parser.peek().kind == tkOperator:
-      return parser.parseExpressionStatement()
+      return parser.parseExpressionStmt()
     elif parser.peek().kind == tkInt:
-      return parser.parseExpressionStatement()
+      return parser.parseExpressionStmt()
     elif parser.peek().kind == tkFloat:
-      return parser.parseExpressionStatement()
+      return parser.parseExpressionStmt()
     elif parser.peek().kind == tkString:
-      return parser.parseExpressionStatement()
+      return parser.parseExpressionStmt()
+    elif parser.peek().kind == tkBool:
+      return parser.parseExpressionStmt()
     else:
-      echo "Unexpected token in statement: ", parser.peek().kind
+      #echo "Unexpected token in statement: ", parser.peek().kind
       discard parser.advance()
       return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "ERROR", literalType: "error"))
   except:
@@ -202,7 +244,7 @@ proc parse*(parser: var Parser): Node =
   print "Starting parsing, total tokens: ", parser.tokens.len
   while not parser.atEnd() and parser.peek().kind != tkEOF:
     print("Parsing statement at position: ", parser.current)
-    let statement = parser.parseStatement()
+    let statement = parser.parseStmt()
     print "Statement parsed: ", statement.kind
     statements.add(statement)
   print "Parsing complete, total statements: ", statements.len
