@@ -8,7 +8,6 @@ proc print*(str: string) =
   if DEBUG:
     echo(str)
 
-
 proc print*(things: varargs[string, `$`]) =
   if DEBUG:
     var stat: string

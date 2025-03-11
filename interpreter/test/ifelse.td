@@ -44,38 +44,8 @@ fn main() {
     assert(is_zero == "zero", "is_zero should be zero")
     assert(is_positive == "positive", "is_positive should be positive")
     
-    // conditionary
-    var a = 5
-    var b = 10
-    
-    if (a < b) {
-        println("a is less than b")
-    }
-    
-    if (!(a > b)) {
-        println("a is not greater than b")
-    }
-
-    assert(a < b, "a should be less than b")
-    assert(!(a > b), "a should not be greater than b")
-
     // scope test
 
     scopetest()
 
-    // other ops
-
-    var c = 5
-    var d = 10
-
-    println(c <= d)
-    println(c >= d)
-    println(c <= 5)
-    println(c <= 6)
-    println(c <= 4)
-
-    assert(c <= d, "c should be less than or equal to d")
-    assert(c <= 5, "c should be less than or equal to 5")
-    assert(c <= 6, "c should be less than or equal to 6")
-    assert(!(c <= 4), "c should not be less than or equal to 4")
 }

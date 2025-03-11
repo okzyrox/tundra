@@ -307,24 +307,6 @@ proc evaluateConstDecl(interpreter: Interpreter, node: Node) =
   interpreter.environment.define(node.name, value)
   # Unfinished
 
-# proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
-#   let condition = interpreter.evaluate(node.condition)
-#   if condition.kind != vtBool:
-#     raise newException(ValueError, "If condition must be a boolean")
-  
-#   if condition.boolValue:
-#     for stmt in node.thenBranch:
-#       result = interpreter.evaluate(stmt)
-#       if stmt.kind == nkReturnStmt:
-#         return result
-#   elif node.elseBranch.len > 0:
-#     for stmt in node.elseBranch:
-#       result = interpreter.evaluate(stmt)
-#       if stmt.kind == nkReturnStmt:
-#         return result
-#   else:
-#     result = Value(kind: vtNil)
-
 proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
   let condition = interpreter.evaluate(node.condition)
   if condition.kind != vtBool:
