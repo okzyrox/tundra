@@ -55,7 +55,11 @@ proc analyzeIdentifier(analyzer: var SemanticAnalyzer, node: Node): string =
 proc analyzeBinaryExpr(analyzer: var SemanticAnalyzer, node: Node): string =
   let leftType = analyzer.analyzeExpression(node.left)
   let rightType = analyzer.analyzeExpression(node.right)
-  if leftType != rightType:
+  if node.left.kind == nkLiteral or node.right.kind == nkLiteral and (node.left.kind == nkIdentifier or node.right.kind == nkIdentifier):
+    return leftType
+  elif leftType != rightType:
+    # echo node.left.identifierName & " " & node.operator & " " & node.right.identifierName
+    # echo leftType & " " & rightType
     analyzer.errors.add("Type mismatch in binary expression")
     return "error"
   return leftType

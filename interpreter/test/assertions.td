@@ -9,7 +9,6 @@ fn main() {
     println(b)
     println(c)
     println(d)
-
     assert(a == "Hi!", "a should be 'Hi!'")
     assert(b == 1, "b should be 1")
     assert(c == 3.14, "c should be 3.14")

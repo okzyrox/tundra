@@ -70,6 +70,17 @@ const typeoffunc = proc(args: Value): Value =
     raise newException(ValueError, "Invalid number of arguments")
   return Value(kind: vtString, stringValue: getValueType(args.argsValue[0]))
 
+const lenfunc = proc(args: Value): Value = 
+  if len(args.argsValue) != 1:
+    raise newException(ValueError, "Invalid number of arguments")
+  let arg = args.argsValue[0]
+  if arg.kind == vtString:
+    # probably should sort out the quotes stuff
+    # i mean its fine for now and asserts work cause of it but still...
+    return Value(kind: vtInt, intValue: arg.stringValue.strip(leading = true, trailing = true, chars = {'\"'}).len)
+  else:
+    raise newException(ValueError, "Invalid argument type for `len()`")
+
 proc initializeGlobals*(interpreter: Interpreter) =
   interpreter.globals.define("print", Value(kind: vtFunc, funcValue: printfunc)) ## no new line
   interpreter.globals.define("println", Value(kind: vtFunc, funcValue: printlnfunc))
@@ -77,6 +88,7 @@ proc initializeGlobals*(interpreter: Interpreter) =
   interpreter.globals.define("readln", Value(kind: vtFunc, funcValue: readlnfunc)) ## new line read
   interpreter.globals.define("assert", Value(kind: vtFunc, funcValue: assertfunc)) 
   interpreter.globals.define("typeof", Value(kind: vtFunc, funcValue: typeoffunc)) ## get type of value
+  interpreter.globals.define("len", Value(kind: vtFunc, funcValue: lenfunc))
 
   # conversions
   interpreter.globals.define("tostring", Value(kind: vtFunc, funcValue: tostringfunc))

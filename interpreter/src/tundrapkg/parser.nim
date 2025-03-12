@@ -121,7 +121,24 @@ proc parseComparison(parser: var Parser): Node =
   
   return left
 
+# proc parseAssignment(parser: var Parser): Node =
+#   print("Parsing assignment")
+#   let left = parser.parseAdditive()
+  
+#   if parser.check(tkEquals) and not (parser.peek().lexeme in ["==", "!=", "<", "<=", ">", ">="]):
+#     print("Found equals sign in assignment")
+#     let equals = parser.advance() # consume equals
+#     let value = parser.parseExpression()
+    
+#     if left.kind == nkIdentifier:
+#       return Node(kind: nkBinaryExpr, left: left, right: value, operator: "=")
+#     else:
+#       raise newException(ValueError, "Invalid assignment target")
+  
+#   return left
+
 proc parseExpression(parser: var Parser): Node =
+  #return parser.parseAssignment()
   return parser.parseComparison()
 
 proc parseVarDecl(parser: var Parser): Node =
@@ -191,11 +208,45 @@ proc parseIfStmt(parser: var Parser): Node =
   
   return Node(kind: nkIfStmt, condition: condition, thenBranch: thenBranch, elseBranch: elseBranch)
 
+
+proc parseBreakStmt(parser: var Parser): Node =
+  discard parser.advance()
+  Node(kind: nkBreakStmt)
+
+proc parseWhileStmt(parser: var Parser): Node =
+  print("Parsing while statement")
+  discard parser.advance() # consume 'while'
+  
+  discard parser.consume(tkBracketOpen, "Expected '(' after 'while'.")
+  let condition = parser.parseExpression()
+  discard parser.consume(tkBracketClose, "Expected ')' after condition.")
+  
+  # Make 'do' optional but don't look for it explicitly
+  if parser.check(tkKeyword) and parser.peek().lexeme == "do":
+    discard parser.advance() # consume 'do'
+  
+  discard parser.consume(tkBraceOpen, "Expected '{' before while loop body.")
+  
+  var body: seq[Node] = @[]
+  while not parser.check(tkBraceClose) and not parser.atEnd():
+    print("Parsing statement in while loop body. Current token: " & $parser.peek().kind)
+    let statement = parser.parseStmt()
+    body.add(statement)
+  
+  discard parser.consume(tkBraceClose, "Expected '}' after while loop body.")
+  
+  return Node(kind: nkWhileStmt, loopCondition: condition, loopBody: body)
+
 proc parseExpressionStmt(parser: var Parser): Node =
   let expr = parser.parseExpression()
   if parser.peek().kind == tkSymbol and parser.peek().lexeme == ";":
     discard parser.advance()
   Node(kind: nkExprStmt, expr: expr)
+
+proc parseExprStmt(parser: var Parser): Node =
+  print("Parsing expression statement")
+  let expr = parser.parseExpression()
+  return Node(kind: nkExprStmt, expr: expr)
 
 proc parseReturnStmt(parser: var Parser): Node =
   discard parser.advance() # consume 'return'
@@ -230,6 +281,8 @@ proc parseStmt(parser: var Parser): Node =
       return parser.parseExpressionStmt()
     elif parser.peek().kind == tkBool:
       return parser.parseExpressionStmt()
+    elif parser.peek().kind == tkEquals:
+      return parser.parseExprStmt()
     else:
       #echo "Unexpected token in statement: ", parser.peek().kind
       discard parser.advance()

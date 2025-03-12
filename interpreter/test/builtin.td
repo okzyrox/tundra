@@ -12,4 +12,7 @@ fn main() {
     
     var ui2 = readln("Say something else: ")
     println("You said: " + ui2)
+
+    println(len(a))
+    
 }

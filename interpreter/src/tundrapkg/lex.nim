@@ -162,7 +162,8 @@ proc readToken(lexer: var Lexer) =
           while not lexer.atEnd() and (lexer.source[lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
               discard lexer.advance()
           let lexeme = lexer.source[lexer.start..<lexer.current]
-          if lexeme in ["var", "const", "if", "else", "elseif", "while", "for", "fn", "return"]:
+          #  "while", "for"
+          if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return"]:
               lexer.addToken(tkKeyword)
           elif lexeme in ["true", "false"]:
               lexer.addToken(tkBool)

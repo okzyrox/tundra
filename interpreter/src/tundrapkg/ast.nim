@@ -3,7 +3,7 @@
 type
   NodeKind* = enum
     nkProgram, nkVarDecl, nkConstDecl, nkFunctionDecl, nkIfStmt, nkWhileStmt,
-    nkForStmt, nkReturnStmt, nkExprStmt, nkBinaryExpr, nkUnaryExpr,
+    nkForStmt, nkBreakStmt, nkReturnStmt, nkExprStmt, nkBinaryExpr, nkUnaryExpr,
     nkLiteral, nkIdentifier, nkCall
 
   Node* = ref object
@@ -26,6 +26,8 @@ type
     of nkWhileStmt, nkForStmt:
       loopCondition*: Node
       loopBody*: seq[Node]
+    of nkBreakStmt:
+      discard
     of nkReturnStmt:
       returnValue*: Node
     of nkExprStmt:

@@ -6,7 +6,7 @@ import tables, strutils, options, sequtils
 
 type
   ValueType = enum
-    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator
+    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier
 
   Value = object
     case kind: ValueType
@@ -17,6 +17,7 @@ type
     of vtFunc: funcValue: proc(args: Value): Value
     of vtOperator: binaryExpr: Node
     of vtArgs: argsValue: seq[Value]
+    of vtIdentifier: identifierName: string
     of vtNil: discard
 
   Environment = ref object
@@ -250,9 +251,16 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
       discard
   of ",":
     return Value(kind: vtArgs, argsValue: @[left, right])
-
-  raise newException(ValueError, "Invalid operator for types " & 
-    getValueType(left) & " and " & getValueType(right) & "are not compatible with " & node.operator)
+  of "=":
+    if node.left.kind != nkIdentifier:
+      raise newException(ValueError, "Cannot assign to non-identifier")
+    let value = interpreter.evaluate(node.right)
+    print("Assigning value " & $value & " to variable " & node.left.identifierName)
+    interpreter.environment.set(node.left.identifierName, value)
+    return value
+  else:
+    raise newException(ValueError, "Invalid operator for types " & 
+      getValueType(left) & " and " & getValueType(right) & "are not compatible with " & node.operator)
 
 proc evaluateVarDecl(interpreter: Interpreter, node: Node): Value =
   let value = interpreter.evaluate(node.value)
@@ -345,23 +353,36 @@ proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
   else:
     return Value(kind: vtNil)
 
+proc evaluateBreakStmt(interpreter: Interpreter, node: Node): Value =
+  return Value(kind: vtNil)
+
 # Unfinished
 proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
   while true:
     let condition = interpreter.evaluate(node.loopCondition)
     if condition.kind != vtBool:
       raise newException(ValueError, "While condition must be a boolean")
+      
     if not condition.boolValue:
       break
-    
+
+    # scope
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(prevEnv)
     
+    var shouldBreak = false
     for stmt in node.loopBody:
-      discard interpreter.evaluate(stmt)
-      
+      let result = interpreter.evaluate(stmt)
+
+      if stmt.kind == nkBreakStmt:
+        shouldBreak = true
+        break
+    
     # restore
     interpreter.environment = prevEnv
+    
+    if shouldBreak:
+      break
   
   return Value(kind: vtNil)
 
@@ -459,6 +480,8 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       return interpreter.evaluateWhileStmt(node)
     of nkForStmt:
       return interpreter.evaluateForStmt(node)
+    of nkBreakStmt:
+      return interpreter.evaluateBreakStmt(node)
     of nkReturnStmt:
       return interpreter.evaluateReturnStmt(node)
     of nkExprStmt:
