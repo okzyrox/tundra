@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths: # only trigger build for actual code changes, i.e. readme and other changes don't cause that issues
-      - 'interpreter/**'
+      - 'src/**'
       - '.github/workflows/**'
 
 jobs:
@@ -21,10 +21,10 @@ jobs:
           nim-version: '2.2.2' # ex: 1.0.x, 1.2.x, 1.4.x ...
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Packages
-        run: cd interpreter && nimble install -Y
+        run: nimble install -Y
 
       - name: Build for Windows
-        run: cd interpreter && nimble build -d:TUNDRA_COMMIT=${{steps.git_short_hash.outputs.result}}
+        run: nimble build -d:TUNDRA_COMMIT=${{steps.git_short_hash.outputs.result}}
   
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
