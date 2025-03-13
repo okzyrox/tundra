@@ -219,9 +219,12 @@ proc parseWhileStmt(parser: var Parser): Node =
   let condition = parser.parseExpression()
   discard parser.consume(tkBracketClose, "Expected ')' after condition.")
   
-  # Make 'do' optional but don't look for it explicitly
-  if parser.check(tkKeyword) and parser.peek().lexeme == "do":
-    discard parser.advance() # consume 'do'
+  # disabled `do` cause of some issues
+  # instead of `while (condition) do {}` just use `while (condition) {}`
+  # the difference is minor
+  
+  # if parser.check(tkKeyword) and parser.peek().lexeme == "do":
+  #   discard parser.advance() # consume 'do'
   
   discard parser.consume(tkBraceOpen, "Expected '{' before while loop body.")
   
@@ -257,6 +260,10 @@ proc parseStmt(parser: var Parser): Node =
         return parser.parseFunctionDecl()
       of "if":
         return parser.parseIfStmt()
+      of "while":
+        return parser.parseWhileStmt()
+      of "break":
+        return parser.parseBreakStmt()
       of "return":
         return parser.parseReturnStmt()
       else:

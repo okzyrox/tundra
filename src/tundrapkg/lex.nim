@@ -163,7 +163,7 @@ proc readToken(lexer: var Lexer) =
               discard lexer.advance()
           let lexeme = lexer.source[lexer.start..<lexer.current]
           #  "while", "for"
-          if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return"]:
+          if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return", "while", "break"]:
               lexer.addToken(tkKeyword)
           elif lexeme in ["true", "false"]:
               lexer.addToken(tkBool)

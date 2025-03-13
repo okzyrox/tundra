@@ -29,6 +29,9 @@ type
     environment: Environment
     functionDeclarations*: Table[string, Node] # used for type checking and whatnot
 
+type
+  BreakException = object of CatchableError
+
 proc `==`(a, b: Value): bool =
   if a.kind != b.kind:
     return false
@@ -91,7 +94,6 @@ proc get(env: Environment, name: string): Value =
 proc getAll*(interpreter: Interpreter): seq[string] =
   for key, val in interpreter.environment.values:
     result.add(key)
-
 
 proc set(env: Environment, name: string, value: Value) =
   if env.values.hasKey(name):
@@ -357,7 +359,7 @@ proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
     return Value(kind: vtNil)
 
 proc evaluateBreakStmt(interpreter: Interpreter, node: Node): Value =
-  return Value(kind: vtNil)
+  raise newException(BreakException, "break")
 
 # Unfinished
 proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
@@ -369,23 +371,19 @@ proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
     if not condition.boolValue:
       break
 
-    # scope
+    #  inner scope
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(prevEnv)
     
-    var shouldBreak = false
-    for stmt in node.loopBody:
-      let result = interpreter.evaluate(stmt)
-
-      if stmt.kind == nkBreakStmt:
-        shouldBreak = true
-        break
-    
-    # restore
-    interpreter.environment = prevEnv
-    
-    if shouldBreak:
+    # Exec body until break or false
+    try:
+      for stmt in node.loopBody:
+        discard interpreter.evaluate(stmt)
+    except BreakException:
       break
+    finally:
+      # restore env
+      interpreter.environment = prevEnv
   
   return Value(kind: vtNil)
 
@@ -493,6 +491,9 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       return interpreter.evaluateCall(node)
     else:
       raise newException(ValueError, "Unexpected node type: " & $node.kind)
+  except BreakException:
+    print("Broken out of loop")
+    raise newException(BreakException, getCurrentExceptionMsg())
   except:
     echo "Error: ", getCurrentExceptionMsg()
     quit(1)
