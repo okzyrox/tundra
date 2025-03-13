@@ -121,25 +121,23 @@ proc parseComparison(parser: var Parser): Node =
   
   return left
 
-# proc parseAssignment(parser: var Parser): Node =
-#   print("Parsing assignment")
-#   let left = parser.parseAdditive()
+proc parseAssignment(parser: var Parser): Node =
+  var left = parser.parseComparison()
   
-#   if parser.check(tkEquals) and not (parser.peek().lexeme in ["==", "!=", "<", "<=", ">", ">="]):
-#     print("Found equals sign in assignment")
-#     let equals = parser.advance() # consume equals
-#     let value = parser.parseExpression()
+  if parser.check(tkEquals) and parser.peek().lexeme == "=":
+    let equals = parser.advance() # consume equals sign
+    let value = parser.parseExpression()
     
-#     if left.kind == nkIdentifier:
-#       return Node(kind: nkBinaryExpr, left: left, right: value, operator: "=")
-#     else:
-#       raise newException(ValueError, "Invalid assignment target")
+    if left.kind == nkIdentifier:
+      return Node(kind: nkBinaryExpr, left: left, right: value, operator: "=")
+    else:
+      throwParserError(parser, "Invalid assignment target")
   
-#   return left
+  return left
 
 proc parseExpression(parser: var Parser): Node =
-  #return parser.parseAssignment()
-  return parser.parseComparison()
+  return parser.parseAssignment()
+  #return parser.parseComparison()
 
 proc parseVarDecl(parser: var Parser): Node =
   discard parser.advance() # consume 'var'
@@ -243,11 +241,6 @@ proc parseExpressionStmt(parser: var Parser): Node =
     discard parser.advance()
   Node(kind: nkExprStmt, expr: expr)
 
-proc parseExprStmt(parser: var Parser): Node =
-  print("Parsing expression statement")
-  let expr = parser.parseExpression()
-  return Node(kind: nkExprStmt, expr: expr)
-
 proc parseReturnStmt(parser: var Parser): Node =
   discard parser.advance() # consume 'return'
   let value = parser.parseExpression()
@@ -269,20 +262,8 @@ proc parseStmt(parser: var Parser): Node =
       else:
         echo "Unexpected keyword: ", parser.peek().lexeme
         return Node(kind: nkExprStmt, expr: parser.parseExpression())
-    elif parser.peek().kind == tkIdent:
+    elif parser.peek().kind in [tkIdent, tkOperator, tkInt, tkFloat, tkString, tkBool, tkEquals]:
       return parser.parseExpressionStmt()
-    elif parser.peek().kind == tkOperator:
-      return parser.parseExpressionStmt()
-    elif parser.peek().kind == tkInt:
-      return parser.parseExpressionStmt()
-    elif parser.peek().kind == tkFloat:
-      return parser.parseExpressionStmt()
-    elif parser.peek().kind == tkString:
-      return parser.parseExpressionStmt()
-    elif parser.peek().kind == tkBool:
-      return parser.parseExpressionStmt()
-    elif parser.peek().kind == tkEquals:
-      return parser.parseExprStmt()
     else:
       #echo "Unexpected token in statement: ", parser.peek().kind
       discard parser.advance()

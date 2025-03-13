@@ -256,7 +256,10 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
       raise newException(ValueError, "Cannot assign to non-identifier")
     let value = interpreter.evaluate(node.right)
     print("Assigning value " & $value & " to variable " & node.left.identifierName)
-    interpreter.environment.set(node.left.identifierName, value)
+    try:
+      interpreter.environment.set(node.left.identifierName, value)
+    except ValueError:
+      interpreter.environment.define(node.left.identifierName, value)
     return value
   else:
     raise newException(ValueError, "Invalid operator for types " & 
