@@ -5,6 +5,7 @@ on:
       - main
     paths: # only trigger build for actual code changes, i.e. readme and other changes don't cause that issues
       - 'src/**'
+      - 'tundra.nimble'
       - '.github/workflows/**'
 
 jobs:
