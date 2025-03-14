@@ -7,7 +7,7 @@ license       = "MIT"
 srcDir        = "src"
 installExt    = @["nim"]
 bin           = @["tundra"]
-binDir        = "../bin"
+binDir        = "bin"
 
 
 # Dependencies
