@@ -152,16 +152,6 @@ proc readToken(lexer: var Lexer) =
       inc lexer.line
       lexer.col = 1
   else:
-      # if c.isDigit:
-      #     while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
-      #         discard lexer.advance()
-      #     if not lexer.atEnd() and lexer.source[lexer.current] == '.':
-      #         discard lexer.advance()
-      #         while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
-      #             discard lexer.advance()
-      #         lexer.addToken(tkFloat)
-      #     else:
-      #         lexer.addToken(tkInt)
       if c.isDigit:
           while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
               discard lexer.advance()
