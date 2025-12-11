@@ -1,28 +1,31 @@
 # Tundra
 
-was tired and thought "hey this would be cool ngl", but im too untalented to ever write such a thing. and then i did it anyway
+an uninteresting and uninspiring interpreted programming language with aspects from Nim, Lua and Rust
 
-read at: `./2am-writeup.md`
+i was tired and thought "hey this would be cool ngl" and then i did it
 
 ## How to run?
 
 #### Requirements:
 
-- nim 2.2.2+ (may work on older versions)
+- Nim 2.2.2+ (may work on older versions)
+- Nimble Packages:
+    - `cligen` 1.7.3+
 
-```sh
-cd interpreter
-nimble build
-```
-
-then you can run it like this:
+and then you can run it like this:
 
 ```sh
 
-tundra -f=filename.td
+tundra_interpreter -f=filename.td
 
 ```
 
-## Code Highlighting
+## Extras
+
+### Code Highlighting
 
 - [**vscode**](https://github.com/okzyrox/tundra-vscode.git)
+
+### "Writeup"
+
+read at: [**writeup**](https://github.com/okzyrox/tundra/blob/main/2am-writeup.md)
