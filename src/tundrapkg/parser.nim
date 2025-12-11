@@ -148,7 +148,8 @@ proc parseAdditive(parser: var Parser): Node =
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
   
   while parser.check(tkOperator) and parser.peek().lexeme == "..":
-    let operator = parser.advance().lexeme
+    # let operator = parser.advance().lexeme
+    discard parser.advance() # consume ..
     let right = parser.parseMultiplicative()
     left = Node(kind: nkRange, rangeStart: left, rangeEnd: right)
 
@@ -167,7 +168,7 @@ proc parseAssignment(parser: var Parser): Node =
   var left = parser.parseComparison()
   
   if parser.check(tkEquals) and parser.peek().lexeme == "=":
-    let equals = parser.advance() # consume equals sign
+    discard parser.advance() # consume equals sign
     let value = parser.parseExpression()
     
     if left.kind == nkIdentifier:

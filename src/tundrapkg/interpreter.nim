@@ -2,7 +2,7 @@
 ##
 
 import ast, utils
-import tables, strutils, options, sequtils, hashes
+import tables, strutils, options, hashes
 
 type
   ValueType = enum
@@ -117,20 +117,18 @@ proc evaluate(interpreter: Interpreter, node: Node): Value
 
 proc evaluateLiteral(interpreter: Interpreter, node: Node): Value =
   case node.literalType
-  of "int":
-    Value(kind: vtInt, intValue: parseInt(node.literalValue))
-  of "float":
-    Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
-  of "string":
-    Value(kind: vtString, stringValue: node.literalValue)
-  of "bool":
-    Value(kind: vtBool, boolValue: parseBool(node.literalValue))
-  of "nil":
-    Value(kind: vtNil)
-  of "operator":
-    Value(kind: vtString, stringValue: node.literalValue)
-  else:
-    Value(kind: vtNil)
+    of "int": return Value(kind: vtInt, intValue: parseInt(node.literalValue))
+    of "float": return Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
+    of "string":
+      var strValue = node.literalValue.strip(leading = true, trailing = true, chars = {'\"'}) # oops...
+      return Value(kind: vtString, stringValue: strValue)
+    of "bool": return Value(kind: vtBool, boolValue: parseBool(node.literalValue))
+    of "operator": return Value(kind: vtOperator, binaryExpr: node)
+    of "nil": return Value(kind: vtNil)
+    of "error": 
+      echo node.literalValue
+      quit(1)
+    else: raise newException(ValueError, "Unknown literal type")
 
 proc `$`(v: Value): string =
   case v.kind
@@ -367,31 +365,31 @@ proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(prevEnv)
     
-    var result = Value(kind: vtNil)
+    var res = Value(kind: vtNil)
     for stmt in node.thenBranch:
-      result = interpreter.evaluate(stmt)
+      res = interpreter.evaluate(stmt)
       if stmt.kind == nkReturnStmt:
         interpreter.environment = prevEnv
-        return result
+        return res
     
     # restore
     interpreter.environment = prevEnv
-    return result
+    return res
   elif node.elseBranch.len > 0:
     # other branches need new environments too
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(prevEnv)
 
-    var result = Value(kind: vtNil)
+    var res = Value(kind: vtNil)
     for stmt in node.elseBranch:
-      result = interpreter.evaluate(stmt)
+      res = interpreter.evaluate(stmt)
       if stmt.kind == nkReturnStmt:
         interpreter.environment = prevEnv
-        return result
+        return res
     
     # restore
     interpreter.environment = prevEnv
-    return result
+    return res
   else:
     return Value(kind: vtNil)
 
@@ -575,19 +573,9 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
         lastValue = interpreter.evaluate(statement)
       return lastValue
     of nkLiteral:
-      case node.literalType
-      of "int": return Value(kind: vtInt, intValue: parseInt(node.literalValue))
-      of "float": return Value(kind: vtFloat, floatValue: parseFloat(node.literalValue))
-      of "string": return Value(kind: vtString, stringValue: node.literalValue)
-      of "bool": return Value(kind: vtBool, boolValue: parseBool(node.literalValue))
-      of "operator": return Value(kind: vtOperator, binaryExpr: node)
-      of "nil": return Value(kind: vtNil)
-      of "error": 
-        echo node.literalValue
-        quit(1)
-      else: raise newException(ValueError, "Unknown literal type")
+      return interpreter.evaluateLiteral(node)
     of nkIdentifier:
-      return interpreter.environment.get(node.identifierName)
+      return interpreter.evaluateIdentifier(node)
     of nkBinaryExpr:
       return interpreter.evaluateBinaryExpr(node)
     of nkUnaryExpr:
@@ -659,7 +647,7 @@ proc interpret*(interpreter: Interpreter, node: Node) =
       echo "No main function found, create a function named 'main' to run your program."
       quit(0)
   except:
-    let e = getCurrentException()
+    # let e = getCurrentException()
     let msg = getCurrentExceptionMsg()
     echo "Error: ", msg
     quit(1)

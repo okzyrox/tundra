@@ -1,13 +1,11 @@
 ## Builtins
-import strutils, sequtils
-
 const printfunc = proc(args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
-    for item in args.argsValue:
-      var fmtIt = ($item).strip(leading = true, trailing = true, chars = {'\"'})
-      output &= fmtIt & ", " 
-    output = output.strip(trailing = true, chars = {',', ' '})
+    for ix, item in args.argsValue:
+      output &= $item
+      if ix < args.argsValue.len - 1:
+        output &= ", "
   else:
     output = $args
   stdout.write(output)
@@ -16,10 +14,10 @@ const printfunc = proc(args: Value): Value =
 const printlnfunc = proc(args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
-    for item in args.argsValue:
-      var fmtIt = ($item).strip(leading = true, trailing = true, chars = {'\"'})
-      output &= fmtIt & ", " 
-    output = output.strip(trailing = true, chars = {',', ' '})
+    for ix, item in args.argsValue:
+      output &= $item
+      if ix < args.argsValue.len - 1:
+        output &= ", "
   else:
     output = $args
   stdout.write(output & "\n")
@@ -35,13 +33,13 @@ const assertfunc = proc(args: Value): Value =
 
   if not condition.boolValue:
     let message = if len(args.argsValue) > 1: args.argsValue[1].stringValue else: "Assertion failed"
-    raise newException(AssertionError, message)
+    raise newException(AssertionDefect, message)
 
   return Value(kind: vtNil)
 
 const readfunc = proc(args: Value): Value =
   let message = args.argsValue[0]
-  stdout.write(message.stringValue.strip(leading = true, trailing = true, chars = {'\"'}))
+  stdout.write(message.stringValue)
   let input = readLine(stdin)
   return Value(kind: vtString, stringValue: input)
 
@@ -49,7 +47,7 @@ const readlnfunc = proc(args: Value): Value =
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   let message = args.argsValue[0]
-  stdout.write(message.stringValue.strip(leading = true, trailing = true, chars = {'\"'}) & "\n")
+  stdout.write(message.stringValue & "\n")
   let input = readLine(stdin)
   return Value(kind: vtString, stringValue: input)
 
@@ -85,7 +83,7 @@ const lenfunc = proc(args: Value): Value =
   if arg.kind == vtString:
     # probably should sort out the quotes stuff
     # i mean its fine for now and asserts work cause of it but still...
-    return Value(kind: vtInt, intValue: arg.stringValue.strip(leading = true, trailing = true, chars = {'\"'}).len)
+    return Value(kind: vtInt, intValue: arg.stringValue.len)
   else:
     raise newException(ValueError, "Invalid argument type for `len()`")
 
