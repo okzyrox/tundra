@@ -2,11 +2,11 @@
 ##
 
 import ast, utils
-import tables, strutils, options, sequtils
+import tables, strutils, options, sequtils, hashes
 
 type
   ValueType = enum
-    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier
+    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier, vtTable
 
   Value = object
     case kind: ValueType
@@ -18,6 +18,7 @@ type
     of vtOperator: binaryExpr: Node
     of vtArgs: argsValue: seq[Value]
     of vtIdentifier: identifierName: string
+    of vtTable: tableValue: Table[Value, Value]
     of vtNil: discard
 
   Environment = ref object
@@ -67,8 +68,17 @@ proc getValueType(value: Value): string =
   of vtString: return "string"
   of vtBool: return "bool"
   of vtNil: return "nil"
+  of vtTable: return "table"
   of vtFunc: return "function"
   else: return "unknown"
+
+proc hash(v: Value): Hash =
+  case v.kind
+  of vtInt: hash(v.intValue)
+  of vtFloat: hash(v.floatValue)
+  of vtString: hash(v.stringValue)
+  of vtBool: hash(v.boolValue)
+  else: hash(0)  # Default fallback for non-hashable types
 
 proc newEnvironment(parent: Environment = nil): Environment =
   Environment(values: initTable[string, Value](), parent: parent)
@@ -115,6 +125,8 @@ proc evaluateLiteral(interpreter: Interpreter, node: Node): Value =
     Value(kind: vtString, stringValue: node.literalValue)
   of "bool":
     Value(kind: vtBool, boolValue: parseBool(node.literalValue))
+  of "nil":
+    Value(kind: vtNil)
   of "operator":
     Value(kind: vtString, stringValue: node.literalValue)
   else:
@@ -133,6 +145,11 @@ proc `$`(v: Value): string =
       output.add($arg)
     output.join(" ")
   of vtNil: "nil"
+  of vtTable:
+    var output: seq[string] = @[]
+    for key, val in v.tableValue:
+      output.add($key & ": " & $val)
+    "{" & output.join(", ") & "}"
   else:
     "other value kind"
 
@@ -254,15 +271,35 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
   of ",":
     return Value(kind: vtArgs, argsValue: @[left, right])
   of "=":
-    if node.left.kind != nkIdentifier:
-      raise newException(ValueError, "Cannot assign to non-identifier")
-    let value = interpreter.evaluate(node.right)
-    print("Assigning value " & $value & " to variable " & node.left.identifierName)
-    try:
-      interpreter.environment.set(node.left.identifierName, value)
-    except ValueError:
-      interpreter.environment.define(node.left.identifierName, value)
-    return value
+    # if node.left.kind != nkIdentifier:
+    #   raise newException(ValueError, "Cannot assign to non-identifier")
+    if node.left.kind == nkIdentifier:
+      let value = interpreter.evaluate(node.right)
+      print("Assigning value " & $value & " to variable " & node.left.identifierName)
+      try:
+        interpreter.environment.set(node.left.identifierName, value)
+      except ValueError:
+        interpreter.environment.define(node.left.identifierName, value)
+      return value
+    elif node.left.kind == nkIndexAccess:
+      if node.left.target.kind != nkIdentifier:
+        raise newException(ValueError, "Cannot to index assign to something that is not an indentifier")
+      
+      let tableName = node.left.target.identifierName
+      var target = interpreter.environment.get(tableName)
+      
+      if target.kind != vtTable:
+        raise newException(ValueError, "Cannot index assign to a non-table value")
+      
+      let index = interpreter.evaluate(node.left.index)
+      let value = interpreter.evaluate(node.right)
+      
+      target.tableValue[index] = value
+      
+      interpreter.environment.set(tableName, target)
+      return value
+    else:
+      raise newException(ValueError, "Invalid assignment target")
   else:
     raise newException(ValueError, "Invalid operator for types " & 
       getValueType(left) & " and " & getValueType(right) & "are not compatible with " & node.operator)
@@ -361,7 +398,7 @@ proc evaluateIfStmt(interpreter: Interpreter, node: Node): Value =
 proc evaluateBreakStmt(interpreter: Interpreter, node: Node): Value =
   raise newException(BreakException, "break")
 
-# Unfinished
+# Unfinished; slow
 proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
   while true:
     let condition = interpreter.evaluate(node.loopCondition)
@@ -371,7 +408,7 @@ proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
     if not condition.boolValue:
       break
 
-    #  inner scope
+    # inner scope
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(prevEnv)
     
@@ -387,8 +424,68 @@ proc evaluateWhileStmt(interpreter: Interpreter, node: Node): Value =
   
   return Value(kind: vtNil)
 
+# nightmare fuel
 proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =
-  raise newException(ValueError, "For loop not implemented yet")
+  let prevEnv = interpreter.environment
+  interpreter.environment = newEnvironment(prevEnv)
+  
+  try:
+    if node.forLoopIterable.kind == nkRange: # assume range (i.e. 1..10)
+      let startVal = interpreter.evaluate(node.forLoopIterable.rangeStart)
+      let endVal = interpreter.evaluate(node.forLoopIterable.rangeEnd)
+      
+      if startVal.kind != vtInt or endVal.kind != vtInt:
+        raise newException(ValueError, "Range bounds must be integers")
+      
+      if node.forLoopVars.len != 1:
+        raise newException(ValueError, "Range iteration requires exactly one loop variable")
+      
+      for i in startVal.intValue..endVal.intValue: # wow the syntax is indentical where could i have gotten that from
+        if i == startVal.intValue:
+          interpreter.environment.define(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+        else:
+          interpreter.environment.set(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+        for stmt in node.forLoopBody:
+          discard interpreter.evaluate(stmt)
+
+    else: # assume table; TODO: assume array for when i implement that
+      let iterable = interpreter.evaluate(node.forLoopIterable)
+      
+      case iterable.kind
+      of vtTable:
+        var isFirst = true
+        # only get key if 1 var
+        if node.forLoopVars.len == 1:
+          for key, value in iterable.tableValue:
+            if isFirst:
+              interpreter.environment.define(node.forLoopVars[0], key)
+              isFirst = false
+            else:
+              interpreter.environment.set(node.forLoopVars[0], key)
+            for stmt in node.forLoopBody:
+              discard interpreter.evaluate(stmt)
+        elif node.forLoopVars.len == 2:
+          for key, value in iterable.tableValue:
+            # set accessible kv values for da for loop
+            if isFirst:
+              interpreter.environment.define(node.forLoopVars[0], key)
+              interpreter.environment.define(node.forLoopVars[1], value)
+              isFirst = false
+            else:
+              interpreter.environment.set(node.forLoopVars[0], key)
+              interpreter.environment.set(node.forLoopVars[1], value)
+            for stmt in node.forLoopBody:
+              discard interpreter.evaluate(stmt)
+        else:
+          raise newException(ValueError, "Invalid number of loop variables for table iteration")
+      else:
+        raise newException(ValueError, "Can only iterate over tables or ranges")
+  except BreakException:
+    discard
+  finally:
+    interpreter.environment = prevEnv # restore env; TODO: make auto?
+  
+  return Value(kind: vtNil)
 
 proc evaluateReturnStmt(interpreter: Interpreter, node: Node): Value =
   return interpreter.evaluate(node.returnValue)
@@ -441,6 +538,33 @@ proc evaluateCall(interpreter: Interpreter, node: Node): Value =
   # run the function if it's all good
   return callee.funcValue(arguments)
 
+proc evaluateTable(interpreter: Interpreter, node: Node): Value =
+  var table = initTable[Value, Value]()
+  for field in node.fields:
+    let key = interpreter.evaluate(field.key)
+    let value = interpreter.evaluate(field.value)
+    table[key] = value
+  return Value(kind: vtTable, tableValue: table)
+
+proc evaluateIndexAccess(interpreter: Interpreter, node: Node): Value =
+  let target = interpreter.evaluate(node.target)
+  let index = interpreter.evaluate(node.index)
+  
+  # limited to tables, may change in the future; both for arrays 
+  # and strings if i want to do something like
+  # ```
+  # var s = "hello"
+  # print(s[0]) # h
+  # ```
+  # or something...
+  if target.kind != vtTable: 
+    raise newException(ValueError, "Cannot index a non-table value")
+  
+  if target.tableValue.hasKey(index):
+    return target.tableValue[index]
+  else:
+    return Value(kind: vtNil)  # Return nil for non-existent keys
+
 proc evaluate(interpreter: Interpreter, node: Node): Value =
   print "evaluating ", node.kind
   try:
@@ -457,6 +581,7 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       of "string": return Value(kind: vtString, stringValue: node.literalValue)
       of "bool": return Value(kind: vtBool, boolValue: parseBool(node.literalValue))
       of "operator": return Value(kind: vtOperator, binaryExpr: node)
+      of "nil": return Value(kind: vtNil)
       of "error": 
         echo node.literalValue
         quit(1)
@@ -489,6 +614,12 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       return interpreter.evaluate(node.expr)
     of nkCall:
       return interpreter.evaluateCall(node)
+    of nkTable:
+      return interpreter.evaluateTable(node)
+    of nkIndexAccess:
+      return interpreter.evaluateIndexAccess(node)
+    of nkRange:
+      return Value(kind: vtNil) # only used in for loops; if it isnt then something is very very very wrong....
     else:
       raise newException(ValueError, "Unexpected node type: " & $node.kind)
   except BreakException:

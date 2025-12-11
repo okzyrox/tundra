@@ -1,3 +1,3 @@
 @echo off
 
-nim c --out:bin\tundra_debug.exe src/tundra.nim
+nim c --out:tundra_debug.exe src/tundra.nim

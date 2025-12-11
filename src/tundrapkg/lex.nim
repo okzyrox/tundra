@@ -13,6 +13,7 @@ type TokenKind* = enum
   tkFloat
   tkString
   tkBool
+  tkNil
   tkSymbol
   tkComment
   tkOperator
@@ -20,6 +21,8 @@ type TokenKind* = enum
   tkBracketClose
   tkBraceOpen
   tkBraceClose
+  tkSquareBracketOpen
+  tkSquareBracketClose
   tkEquals
   tkEOF
 
@@ -38,7 +41,10 @@ proc `$`*(kind: TokenKind): string =
   of tkBracketClose: "Closed Bracket (`)`)"
   of tkBraceOpen: "Open Brace (`{`)"
   of tkBraceClose: "Closed Brace (`}`)"
+  of tkSquareBracketOpen: "Open Square Bracket (`[`)"
+  of tkSquareBracketClose: "Closed Square Bracket (`]`)"
   of tkEquals: "Equals (`=`)"
+  of tkNil: "Nil"
   of tkEOF: "EOF"
   else: "Unknown"
 
@@ -88,6 +94,8 @@ proc readToken(lexer: var Lexer) =
   of ')': lexer.addToken(tkBracketClose)
   of '{': lexer.addToken(tkBraceOpen)
   of '}': lexer.addToken(tkBraceClose)
+  of '[': lexer.addToken(tkSquareBracketOpen)
+  of ']': lexer.addToken(tkSquareBracketClose)
   of '=': 
     if not lexer.atEnd() and lexer.source[lexer.current] == '=':
       discard lexer.advance() # ==
@@ -108,7 +116,7 @@ proc readToken(lexer: var Lexer) =
         lexer.addToken(tkOperator)
     else:
         lexer.addToken(tkOperator)
-  of '+', '-', '*', '/', '%', '^':
+  of '+', '-', '*', '/', '%', '^', '.':
       if c == '/' and not lexer.atEnd():
           if lexer.source[lexer.current] == '/': # Single-line comment
               discard lexer.advance()
@@ -133,6 +141,10 @@ proc readToken(lexer: var Lexer) =
           else:
               lexer.addToken(tkOperator)
       else:
+        if c == '.' and not lexer.atEnd() and lexer.source[lexer.current] == '.':
+          discard lexer.advance()
+          lexer.addToken(tkOperator)
+        else:
           lexer.addToken(tkOperator)
   of ' ', '\r', '\t':
       discard
@@ -140,14 +152,28 @@ proc readToken(lexer: var Lexer) =
       inc lexer.line
       lexer.col = 1
   else:
+      # if c.isDigit:
+      #     while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
+      #         discard lexer.advance()
+      #     if not lexer.atEnd() and lexer.source[lexer.current] == '.':
+      #         discard lexer.advance()
+      #         while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
+      #             discard lexer.advance()
+      #         lexer.addToken(tkFloat)
+      #     else:
+      #         lexer.addToken(tkInt)
       if c.isDigit:
           while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
               discard lexer.advance()
           if not lexer.atEnd() and lexer.source[lexer.current] == '.':
-              discard lexer.advance()
-              while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
+              # range operator (..)
+              if lexer.current + 1 < lexer.source.len and lexer.source[lexer.current + 1] == '.':
+                  lexer.addToken(tkInt)
+              else:
                   discard lexer.advance()
-              lexer.addToken(tkFloat)
+                  while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
+                      discard lexer.advance()
+                  lexer.addToken(tkFloat)
           else:
               lexer.addToken(tkInt)
       elif c == '"':
@@ -163,10 +189,12 @@ proc readToken(lexer: var Lexer) =
               discard lexer.advance()
           let lexeme = lexer.source[lexer.start..<lexer.current]
           #  "while", "for"
-          if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return", "while", "break"]:
+          if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return", "while", "break", "for", "in", "do"]:
               lexer.addToken(tkKeyword)
           elif lexeme in ["true", "false"]:
               lexer.addToken(tkBool)
+          elif lexeme == "nil":
+              lexer.addToken(tkNil)
           else:
               lexer.addToken(tkIdent)
       else:

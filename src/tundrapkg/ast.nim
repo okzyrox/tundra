@@ -4,7 +4,7 @@ type
   NodeKind* = enum
     nkProgram, nkVarDecl, nkConstDecl, nkFunctionDecl, nkIfStmt, nkWhileStmt,
     nkForStmt, nkBreakStmt, nkReturnStmt, nkExprStmt, nkBinaryExpr, nkUnaryExpr,
-    nkLiteral, nkIdentifier, nkCall
+    nkLiteral, nkIdentifier, nkCall, nkTable, nkIndexAccess, nkRange
 
   Node* = ref object
     case kind*: NodeKind
@@ -23,9 +23,13 @@ type
       condition*: Node
       thenBranch*: seq[Node]
       elseBranch*: seq[Node]
-    of nkWhileStmt, nkForStmt:
+    of nkWhileStmt:
       loopCondition*: Node
       loopBody*: seq[Node]
+    of nkForStmt:
+      forLoopVars*: seq[string]
+      forLoopIterable*: Node
+      forLoopBody*: seq[Node] # we cant name this the same as loopBody because Nim....
     of nkBreakStmt:
       discard
     of nkReturnStmt:
@@ -46,3 +50,36 @@ type
     of nkCall:
       callee*: Node
       arguments*: seq[Node]
+    of nkTable:
+      fields*: seq[tuple[key: Node, value: Node]]
+    of nkIndexAccess:
+      target*: Node
+      index*: Node
+    of nkRange:
+      rangeStart*: Node
+      rangeEnd*: Node
+
+proc `$`*(nodeKind: NodeKind): string =
+  result = case nodeKind
+  of nkProgram: "Program"
+  of nkVarDecl: "VarDecl"
+  of nkConstDecl: "ConstDecl"
+  of nkFunctionDecl: "FunctionDecl"
+  of nkIfStmt: "IfStmt"
+  of nkWhileStmt: "WhileStmt"
+  of nkForStmt: "ForStmt"
+  of nkBreakStmt: "BreakStmt"
+  of nkReturnStmt: "ReturnStmt"
+  of nkExprStmt: "ExprStmt"
+  of nkBinaryExpr: "BinaryExpr"
+  of nkUnaryExpr: "UnaryExpr"
+  of nkLiteral: "Literal"
+  of nkIdentifier: "Identifier"
+  of nkCall: "Call"
+  of nkTable: "Table"
+  of nkIndexAccess: "IndexAccess"
+  of nkRange: "Range"
+  else: "Unknown"
+
+proc `$`*(node: Node): string =
+  result = "Node(" & $node.kind & ")"

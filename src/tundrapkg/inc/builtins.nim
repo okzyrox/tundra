@@ -4,20 +4,24 @@ import strutils, sequtils
 const printfunc = proc(args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
-    output = args.argsValue.mapIt($it).join(", ")
+    for item in args.argsValue:
+      var fmtIt = ($item).strip(leading = true, trailing = true, chars = {'\"'})
+      output &= fmtIt & ", " 
+    output = output.strip(trailing = true, chars = {',', ' '})
   else:
     output = $args
-  output = output.strip(leading = true, trailing = true, chars = {'\"'})
   stdout.write(output)
   return Value(kind: vtNil)
 
 const printlnfunc = proc(args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
-    output = args.argsValue.mapIt($it).join(", ")
+    for item in args.argsValue:
+      var fmtIt = ($item).strip(leading = true, trailing = true, chars = {'\"'})
+      output &= fmtIt & ", " 
+    output = output.strip(trailing = true, chars = {',', ' '})
   else:
     output = $args
-  output = output.strip(leading = true, trailing = true, chars = {'\"'})
   stdout.write(output & "\n")
   return Value(kind: vtNil)
 
@@ -60,6 +64,10 @@ const tostringfunc = proc(args: Value): Value =
       return Value(kind: vtString, stringValue: $arg.floatValue)
     elif arg.kind == vtString:
       return Value(kind: vtString, stringValue: arg.stringValue)
+    elif arg.kind == vtBool:
+      return Value(kind: vtString, stringValue: $arg.boolValue)
+    elif arg.kind == vtNil:
+      return Value(kind: vtString, stringValue: "nil")
     else:
       raise newException(ValueError, "Invalid string value")
   except ValueError:
@@ -80,6 +88,20 @@ const lenfunc = proc(args: Value): Value =
     return Value(kind: vtInt, intValue: arg.stringValue.strip(leading = true, trailing = true, chars = {'\"'}).len)
   else:
     raise newException(ValueError, "Invalid argument type for `len()`")
+
+# const keysfunc = proc(args: Value): Value =
+#   if len(args.argsValue) != 1:
+#     raise newException(ValueError, "Invalid num of arguments for keys()")
+  
+#   let arg = args.argsValue[0]
+#   if arg.kind != vtTable:
+#     raise newException(ValueError, "Cannot get keys of a non-table value")
+  
+#   var keys: seq[Value] = @[]
+#   for key in arg.tableValue.keys:
+#     keys.add(key)
+  
+#   return Value(kind: vtArgs, argsValue: keys)
 
 proc initializeGlobals*(interpreter: Interpreter) =
   interpreter.globals.define("print", Value(kind: vtFunc, funcValue: printfunc)) ## no new line

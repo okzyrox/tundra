@@ -59,6 +59,37 @@ proc parseCall(parser: var Parser, callee: Node): Node =
   discard parser.consume(tkBracketClose, "Expected ')' after arguments.")
   return Node(kind: nkCall, callee: callee, arguments: arguments)
 
+proc parseTable(parser: var Parser): Node =
+  print "Parsing table literal"
+  var fields: seq[tuple[key: Node, value: Node]] = @[]
+
+  # we parse until we have an end; 
+  # although this is unsafe asf (but i kinda havent found too many issues yet soooo...)
+  if not parser.check(tkBraceClose): 
+    while true: # todo: make this less infinite
+      let key = parser.parseExpression() # todo: ensure only integer/string keys (although bool tables are funny)
+      
+      discard parser.consume(tkSymbol, "Expected ':' after table key.")
+      if parser.tokens[parser.current - 1].lexeme != ":":
+        throwParserError(parser, "Expected ':' after table key.")
+      
+      let value = parser.parseExpression()
+      fields.add((key: key, value: value))
+      
+      # a comma means we can move on, probably...
+      if not parser.match(tkSymbol) or parser.tokens[parser.current - 1].lexeme != ",":
+        break
+  
+  discard parser.consume(tkBraceClose, "Expected '}' after table literal.")
+  return Node(kind: nkTable, fields: fields)
+
+proc parseIndexAccess(parser: var Parser, target: Node): Node =
+  # todo: need support for chaining index accesses (i.e. x[0][1][2])
+  print "Parsing index access"
+  let index = parser.parseExpression()
+  discard parser.consume(tkSquareBracketClose, "Expected ']' after index.")
+  return Node(kind: nkIndexAccess, target: target, index: index)  
+
 proc parsePrimary(parser: var Parser): Node =
   try:
     if parser.match(tkInt):
@@ -69,15 +100,21 @@ proc parsePrimary(parser: var Parser): Node =
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "string")
     elif parser.match(tkBool):
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "bool")
+    elif parser.match(tkNil):
+      return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "nil")
     elif parser.match(tkIdent):
       let identifier = Node(kind: nkIdentifier, identifierName: parser.tokens[parser.current - 1].lexeme)
       if parser.match(tkBracketOpen):
         return parser.parseCall(identifier)
+      elif parser.match(tkSquareBracketOpen):
+        return parser.parseIndexAccess(identifier)
       return identifier
     elif parser.match(tkBracketOpen):
       let expr = parser.parseExpression()
       discard parser.consume(tkBracketClose, "Expected ')' after expression.")
       return expr
+    elif parser.match(tkBraceOpen):
+      return parser.parseTable()
     elif parser.match(tkOperator):
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "operator")
     else:
@@ -110,6 +147,11 @@ proc parseAdditive(parser: var Parser): Node =
     let right = parser.parseMultiplicative()
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
   
+  while parser.check(tkOperator) and parser.peek().lexeme == "..":
+    let operator = parser.advance().lexeme
+    let right = parser.parseMultiplicative()
+    left = Node(kind: nkRange, rangeStart: left, rangeEnd: right)
+
   return left
 
 proc parseComparison(parser: var Parser): Node =
@@ -129,6 +171,9 @@ proc parseAssignment(parser: var Parser): Node =
     let value = parser.parseExpression()
     
     if left.kind == nkIdentifier:
+      return Node(kind: nkBinaryExpr, left: left, right: value, operator: "=")
+    elif left.kind == nkIndexAccess:
+      # x["key"] = value
       return Node(kind: nkBinaryExpr, left: left, right: value, operator: "=")
     else:
       throwParserError(parser, "Invalid assignment target")
@@ -211,6 +256,41 @@ proc parseBreakStmt(parser: var Parser): Node =
   discard parser.advance()
   Node(kind: nkBreakStmt)
 
+proc parseForStmt(parser: var Parser): Node =
+  discard parser.advance()
+  discard parser.consume(tkBracketOpen, "Expected '(' after 'for'.")
+  
+  discard parser.consume(tkKeyword, "Expected 'var' in for loop.")
+  if parser.tokens[parser.current - 1].lexeme != "var":
+    throwParserError(parser, "Expected 'var' in for loop.")
+  
+  var loopVars: seq[string] = @[]
+  loopVars.add(parser.consume(tkIdent, "Expected variable name.").lexeme)
+  
+  while parser.match(tkSymbol) and parser.tokens[parser.current - 1].lexeme == ",":
+    loopVars.add(parser.consume(tkIdent, "Expected variable name after comma.").lexeme)
+  
+  discard parser.consume(tkKeyword, "Expected 'in' keyword.")
+  if parser.tokens[parser.current - 1].lexeme != "in":
+    throwParserError(parser, "Expected 'in' keyword in for loop.")
+
+  # `do` is also disabled for the same aforementioned reasons in the parseWhileStmt block
+  # because my keyword parser is BUGGY
+  
+  let iterable = parser.parseExpression()
+  
+  discard parser.consume(tkBracketClose, "Expected ')' after for loop header.")
+  discard parser.consume(tkBraceOpen, "Expected '{' to start for loop body.")
+  
+  var body: seq[Node] = @[]
+  while not parser.check(tkBraceClose) and not parser.atEnd():
+    body.add(parser.parseStmt())
+  
+  discard parser.consume(tkBraceClose, "Expected '}' after for loop body.")
+  
+  return Node(kind: nkForStmt, forLoopVars: loopVars, forLoopIterable: iterable, forLoopBody: body)
+
+
 proc parseWhileStmt(parser: var Parser): Node =
   print("Parsing while statement")
   discard parser.advance() # consume 'while'
@@ -253,7 +333,8 @@ proc parseStmt(parser: var Parser): Node =
   print "Parsing statement, current token: ", parser.peek().kind
   try:
     if parser.peek().kind == tkKeyword:
-      case parser.peek().lexeme
+      var keyword = parser.peek().lexeme
+      case keyword
       of "var":
         return parser.parseVarDecl()
       of "fn":
@@ -262,6 +343,8 @@ proc parseStmt(parser: var Parser): Node =
         return parser.parseIfStmt()
       of "while":
         return parser.parseWhileStmt()
+      of "for":
+        return parser.parseForStmt()
       of "break":
         return parser.parseBreakStmt()
       of "return":
@@ -272,9 +355,9 @@ proc parseStmt(parser: var Parser): Node =
     elif parser.peek().kind in [tkIdent, tkOperator, tkInt, tkFloat, tkString, tkBool, tkEquals]:
       return parser.parseExpressionStmt()
     else:
-      #echo "Unexpected token in statement: ", parser.peek().kind
+      echo "Unexpected token in statement: ", parser.peek().kind
       discard parser.advance()
-      return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "ERROR", literalType: "error"))
+      return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "PARSE ERROR", literalType: "error"))
   except:
     return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "ERROR - " & getCurrentExceptionMsg(), literalType: "error"))
 
