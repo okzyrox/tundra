@@ -148,7 +148,6 @@ proc parseAdditive(parser: var Parser): Node =
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
   
   while parser.check(tkOperator) and parser.peek().lexeme == "..":
-    # let operator = parser.advance().lexeme
     discard parser.advance() # consume ..
     let right = parser.parseMultiplicative()
     left = Node(kind: nkRange, rangeStart: left, rangeEnd: right)
@@ -191,8 +190,13 @@ proc parseVarDecl(parser: var Parser): Node =
   var typ = ""
   if parser.match(tkSymbol) and parser.tokens[parser.current - 1].lexeme == ":":
     typ = parser.consume(tkIdent, "Expected type after ':'.").lexeme
-  discard parser.consume(tkEquals, "Expected '=' after variable name.")
-  let value = parser.parseExpression()
+  
+  var value: Node
+  try:
+    discard parser.consume(tkEquals, "Expected '=' after variable name.")
+    value = parser.parseExpression()
+  except ParserError:
+    value = Node(kind: nkLiteral, literalValue: "nil", literalType: "nil")
   Node(kind: nkVarDecl, name: name, typ: typ, value: value)
 
 proc parseFunctionDecl(parser: var Parser): Node =

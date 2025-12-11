@@ -77,15 +77,73 @@ proc advance(lexer: var Lexer): char =
 
 proc addToken(lexer: var Lexer, kind: TokenKind) =
   let lexeme = lexer.source[lexer.start..<lexer.current]
-  lexer.tokens.add(Token(kind: kind, lexeme: lexeme, line: lexer.line,
-          column: lexer.col - lexeme.len))
+  lexer.tokens.add(Token(kind: kind, lexeme: lexeme, line: lexer.line, column: lexer.col - lexeme.len))
 
+proc readOperator(lexer: var Lexer, c: char) =
+  if c == '/' and not lexer.atEnd():
+    if lexer.source[lexer.current] == '/': # Single-line comment
+      discard lexer.advance()
+      while not lexer.atEnd() and lexer.source[lexer.current] != '\n':
+        discard lexer.advance()
+      return # skip the token adding
+    elif not lexer.atEnd() and lexer.source[lexer.current] == '*': # Multi-line comment
+      discard lexer.advance()
+      var nesting = 1
+      while nesting > 0 and not lexer.atEnd():
+        if lexer.current + 1 < lexer.source.len:
+          if lexer.source[lexer.current] == '/' and lexer.source[lexer.current + 1] == '*':
+            nesting += 1
+            discard lexer.advance()
+          elif lexer.source[lexer.current] == '*' and lexer.source[lexer.current + 1] == '/':
+            nesting -= 1
+            discard lexer.advance()
+        
+        discard lexer.advance()
+      if not lexer.atEnd():
+        discard lexer.advance()
+      return # skip the token adding
+    else:
+      lexer.addToken(tkOperator)
+  else:
+    if c == '.' and not lexer.atEnd() and lexer.source[lexer.current] == '.':
+      discard lexer.advance()
+      lexer.addToken(tkOperator)
+    else:
+      lexer.addToken(tkOperator)
+
+proc readDigit(lexer: var Lexer, c: char) =
+  while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
+    discard lexer.advance()
+  if not lexer.atEnd() and lexer.source[lexer.current] == '.':
+    # range operator (..)
+    if lexer.current + 1 < lexer.source.len and lexer.source[lexer.current + 1] == '.':
+      lexer.addToken(tkInt)
+    else:
+      discard lexer.advance()
+      while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
+        discard lexer.advance()
+      lexer.addToken(tkFloat)
+  else:
+    lexer.addToken(tkInt)
+
+proc readAlphaAscii(lexer: var Lexer, c: char) =
+  while not lexer.atEnd() and (lexer.source[lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
+    discard lexer.advance()
+  let lexeme = lexer.source[lexer.start..<lexer.current]
+  if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return", "while", "break", "for", "in", "do"]:
+    lexer.addToken(tkKeyword)
+  elif lexeme in ["true", "false"]:
+    lexer.addToken(tkBool)
+  elif lexeme == "nil":
+    lexer.addToken(tkNil)
+  else:
+    lexer.addToken(tkIdent)
 
 proc readToken(lexer: var Lexer) =
   print "Reading token at position: ", lexer.current
 
   if lexer.atEnd():
-      return
+    return
 
   let c = lexer.advance()
   print "Character read: '", c, "'"
@@ -112,95 +170,44 @@ proc readToken(lexer: var Lexer) =
       lexer.addToken(tkOperator)
   of '<', '>':
     if not lexer.atEnd() and lexer.source[lexer.current] == '=':
-        discard lexer.advance()
-        lexer.addToken(tkOperator)
+      discard lexer.advance()
+      lexer.addToken(tkOperator)
     else:
-        lexer.addToken(tkOperator)
+      lexer.addToken(tkOperator)
   of '+', '-', '*', '/', '%', '^', '.':
-      if c == '/' and not lexer.atEnd():
-          if lexer.source[lexer.current] == '/': # Single-line comment
-              discard lexer.advance()
-              while not lexer.atEnd() and lexer.source[lexer.current] != '\n':
-                  discard lexer.advance()
-              return # skip the token adding
-          elif not lexer.atEnd() and lexer.source[lexer.current] == '*': # Multi-line comment
-              discard lexer.advance()
-              var nesting = 1
-              while nesting > 0 and not lexer.atEnd():
-                  if lexer.current + 1 < lexer.source.len:
-                      if lexer.source[lexer.current] == '/' and lexer.source[lexer.current + 1] == '*':
-                          nesting += 1
-                          discard lexer.advance()
-                      elif lexer.source[lexer.current] == '*' and lexer.source[lexer.current + 1] == '/':
-                          nesting -= 1
-                          discard lexer.advance()
-                  discard lexer.advance()
-              if not lexer.atEnd():
-                  discard lexer.advance()
-              return # skip the token adding
-          else:
-              lexer.addToken(tkOperator)
-      else:
-        if c == '.' and not lexer.atEnd() and lexer.source[lexer.current] == '.':
-          discard lexer.advance()
-          lexer.addToken(tkOperator)
-        else:
-          lexer.addToken(tkOperator)
+    lexer.readOperator(c)
   of ' ', '\r', '\t':
-      discard
+    discard
   of '\n':
-      inc lexer.line
-      lexer.col = 1
+    inc lexer.line
+    lexer.col = 1
   else:
-      if c.isDigit:
-          while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
-              discard lexer.advance()
-          if not lexer.atEnd() and lexer.source[lexer.current] == '.':
-              # range operator (..)
-              if lexer.current + 1 < lexer.source.len and lexer.source[lexer.current + 1] == '.':
-                  lexer.addToken(tkInt)
-              else:
-                  discard lexer.advance()
-                  while not lexer.atEnd() and lexer.source[lexer.current].isDigit:
-                      discard lexer.advance()
-                  lexer.addToken(tkFloat)
-          else:
-              lexer.addToken(tkInt)
-      elif c == '"':
-          while not lexer.atEnd() and lexer.source[lexer.current] != '"':
-              discard lexer.advance()
-          if not lexer.atEnd():
-              discard lexer.advance()
-          lexer.addToken(tkString)
-      elif c in ['{', '}']:
-          lexer.addToken(tkSymbol)
-      elif c.isAlphaAscii:
-          while not lexer.atEnd() and (lexer.source[lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
-              discard lexer.advance()
-          let lexeme = lexer.source[lexer.start..<lexer.current]
-          #  "while", "for"
-          if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return", "while", "break", "for", "in", "do"]:
-              lexer.addToken(tkKeyword)
-          elif lexeme in ["true", "false"]:
-              lexer.addToken(tkBool)
-          elif lexeme == "nil":
-              lexer.addToken(tkNil)
-          else:
-              lexer.addToken(tkIdent)
-      else:
-          echo "Unrecognized char: ", c
-          discard
+    if c.isDigit:
+      lexer.readDigit(c)
+    elif c == '"':
+      while not lexer.atEnd() and lexer.source[lexer.current] != '"':
+        discard lexer.advance()
+      if not lexer.atEnd():
+        discard lexer.advance()
+      lexer.addToken(tkString)
+    elif c in ['{', '}']:
+      lexer.addToken(tkSymbol)
+    elif c.isAlphaAscii:
+      lexer.readAlphaAscii(c)
+    else:
+      echo "Unrecognized char: ", c
+      discard
   if lexer.tokens.len > 0:
-      print "Token added: ", lexer.tokens[^1]
+    print "Token added: ", lexer.tokens[^1]
 
 proc readTokens*(lexer: var Lexer): seq[Token] =
   print "Starting tokenization"
   while not lexer.atEnd():
-      print "Current position: ", lexer.current, " / ", lexer.source.len
-      lexer.start = lexer.current
-      lexer.readToken()
+    print "Current position: ", lexer.current, " / ", lexer.source.len
+    lexer.start = lexer.current
+    lexer.readToken()
 
   if lexer.tokens.len == 0 or lexer.tokens[^1].kind != tkEOF:
-      lexer.tokens.add(Token(kind: tkEOF, lexeme: "", line: lexer.line, column: lexer.col))
+    lexer.tokens.add(Token(kind: tkEOF, lexeme: "", line: lexer.line, column: lexer.col))
   print "Tokenization complete. Total tokens: ", lexer.tokens.len
   result = lexer.tokens

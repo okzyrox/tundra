@@ -32,11 +32,13 @@ fn main() {
         "valid": false,
         5: "xyz",
         6: "abc",
-        7: "foobar"
+        7: "foobar",
+        "b": {
+            "bar": "baz"
+        }
     }
 
     for (var key, value in mixedtable) {
         println(key, value)
-        println(typeof(key), typeof(value))
     }
 }
