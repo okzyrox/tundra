@@ -1,0 +1,31 @@
+{
+  "name": "tundra-lang-highlighter",
+  "displayName": "Tundra Language Highlighter",
+  "description": "Apply code highlighting to Tundra language files",
+  "version": "0.0.1",
+  "publisher": "okzyrox",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/okzyrox/tundra.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "tundra",
+      "aliases": ["Tundra", "tundra"],
+      "extensions": [".td", ".tundra"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "tundra",
+      "scopeName": "source.tundra",
+      "path": "./syntaxes/tundra.tmLanguage.json"
+    }]
+  }
+}

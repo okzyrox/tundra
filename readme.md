@@ -24,7 +24,7 @@ tundra_interpreter -f=filename.td
 
 ### Code Highlighting
 
-- [**vscode**](https://github.com/okzyrox/tundra-vscode.git)
+- [**vscode**](https://github.com/okzyrox/tundra/tree/main/extensions/vscode/)
 
 ### "Writeup"
 
