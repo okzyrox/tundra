@@ -30,10 +30,26 @@ proc getTundraExe(exeName: string): Option[string] =
   return none(string)
 
 task "debug", "Build":
-  shell(nimExe, "c", DebugFeatures, "-d:debug", "src/" & MainFile)
+  var extraArgs: seq[string] = @[]
+  let args = commandLineParams()
+  for ix, arg in args:
+    if ix == 0:
+      continue
+    extraArgs.add(arg)
+  
+  var flags = "-d:debug " & extraArgs.join(" ")
+  shell(nimExe, "c", DebugFeatures, flags, "src/" & MainFile)
 
 task "release", "Build release version":
-  shell(nimExe, "c", ReleaseFeatures, "src/" & MainFile)
+  var extraArgs: seq[string] = @[]
+  let args = commandLineParams()
+  for ix, arg in args:
+    if ix == 0:
+      continue
+    extraArgs.add(arg)
+  
+  var flags = " " & extraArgs.join(" ")
+  shell(nimExe, "c", ReleaseFeatures, flags, "src/" & MainFile)
 
 task "runTundraTests", "Run Tundra tests":
   var tundraExe = getTundraExe(ExeName)
