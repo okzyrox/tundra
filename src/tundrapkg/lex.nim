@@ -1,8 +1,6 @@
 ## LEXER
 ##
-
-
-import std/strutils
+import std/[strutils, unicode]
 
 import utils
 
@@ -146,6 +144,7 @@ proc readToken(lexer: var Lexer) =
     return
 
   let c = lexer.advance()
+  let cRune = [c].toRunes()[0]
   print "Character read: '", c, "'"
   case c
   of '(': lexer.addToken(tkBracketOpen)
@@ -162,6 +161,7 @@ proc readToken(lexer: var Lexer) =
       lexer.addToken(tkEquals)
   of ':': lexer.addToken(tkSymbol)
   of ',': lexer.addToken(tkSymbol)
+  of '?': lexer.addToken(tkSymbol)
   of '!':
     if not lexer.atEnd() and lexer.source[lexer.current] == '=':
       discard lexer.advance() # !=

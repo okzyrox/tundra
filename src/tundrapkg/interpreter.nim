@@ -1,8 +1,8 @@
 ## The interpreter
 ##
+import std/[tables, strutils, options, hashes]
 
 import ast, utils
-import tables, strutils, options, hashes
 
 type
   ValueType = enum
@@ -55,6 +55,10 @@ proc `==`(a, b: Value): bool =
     if b.kind != vtBool:
       return false
     return a.boolValue == b.boolValue
+  of vtNil:
+    if b.kind != vtNil:
+      return false
+    return true
   else:
     return false
 
@@ -157,6 +161,10 @@ proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
 proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
   let left = interpreter.evaluate(node.left)
   let right = interpreter.evaluate(node.right)
+
+  if (left.kind == vtNil or right.kind == vtNil) and (node.operator notin ["=", "==", "!=", ","]):
+    raise newException(ValueError, "Attempted to use operation " & node.operator & " on " & getValueType(left) & " and " & getValueType(right))
+
   case node.operator
   of "+":
     case left.kind
@@ -523,10 +531,14 @@ proc evaluateCall(interpreter: Interpreter, node: Node): Value =
               let expectedType = fnDecl.params[i].typ
               let argValue = arguments.argsValue[i]
               let actualType = getValueType(argValue)
-              
+              let isOptional = fnDecl.params[i].optional
               # check type mismatch
               # todo: potentially add support for implicit type conversion
               # dunno how to represent that well without making it look bad
+
+              if isOptional and actualType == "nil":
+                continue
+              
               if expectedType != actualType and expectedType != "any" and 
                  not (expectedType == "float" and actualType == "int"):
                 raise newException(ValueError, "Type mismatch in call to '" & funcName & 

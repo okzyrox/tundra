@@ -16,7 +16,7 @@ type
       value*: Node
     of nkFunctionDecl:
       fnName*: string
-      params*: seq[tuple[name: string, typ: string]]
+      params*: seq[tuple[name: string, typ: string, optional: bool]]
       returnType*: string
       body*: seq[Node]
     of nkIfStmt:

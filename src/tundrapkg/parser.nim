@@ -1,4 +1,6 @@
 ## Parser
+## 
+import std/[strutils]
 
 import lex
 import ast
@@ -118,9 +120,12 @@ proc parsePrimary(parser: var Parser): Node =
     elif parser.match(tkOperator):
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "operator")
     else:
-      return Node(kind: nkLiteral, literalValue: "ERROR", literalType: "error")
+      var peek = parser.peek().kind
+      return Node(kind: nkLiteral, literalValue: "ERROR - No match for primary: " & $peek, literalType: "error")
   except:
-    return Node(kind: nkLiteral, literalValue: "ERROR -" & getCurrentExceptionMsg(), literalType: "error")
+    var msg = "ERROR - " & getCurrentExceptionMsg()
+    echo msg
+    return Node(kind: nkLiteral, literalValue: msg, literalType: "error")
 
 proc parseUnary(parser: var Parser): Node =
   if parser.match(tkOperator) and parser.tokens[parser.current - 1].lexeme in ["+", "-", "!"]:
@@ -204,17 +209,24 @@ proc parseFunctionDecl(parser: var Parser): Node =
   let name = parser.consume(tkIdent, "Expected function name.").lexeme
   print "Function name: ", name
   discard parser.consume(tkBracketOpen, "Expected '(' after function name.")
-  var params: seq[tuple[name: string, typ: string]] = @[]
+  var params: seq[tuple[name: string, typ: string, optional: bool]] = @[]
 
   if not parser.check(tkBracketClose):
     while true:
       if parser.atEnd() or parser.check(tkBracketClose): break
       let paramName = parser.consume(tkIdent, "Expected parameter name.").lexeme
       discard parser.consume(tkSymbol, "Expected ':' after parameter name.")
-      let paramType = parser.consume(tkIdent, "Expected parameter type.").lexeme
+
+      var optional = false
+      var paramType = parser.consume(tkIdent, "Expected parameter type.").lexeme
+      if parser.peek().lexeme == "?":
+        discard parser.advance() # consume '?'
+        optional = true
+
       if not (paramType in ["int", "float", "string", "bool"]):
         throwParserError(parser, "Invalid parameter type: '" & paramType & "'.", false)
-      params.add((name: paramName, typ: paramType))
+
+      params.add((name: paramName, typ: paramType, optional: optional))
       if not parser.check(tkSymbol) or parser.peek().lexeme != ",": break
       discard parser.advance() # consume ','
 
@@ -330,8 +342,14 @@ proc parseExpressionStmt(parser: var Parser): Node =
   Node(kind: nkExprStmt, expr: expr)
 
 proc parseReturnStmt(parser: var Parser): Node =
-  discard parser.advance() # consume 'return'
-  let value = parser.parseExpression()
+  let currentToken = parser.advance() # consume 'return'
+  let nextToken = parser.peek()
+  var value: Node
+  if (nextToken.line > currentToken.line) or parser.atEnd():
+    value = Node(kind: nkLiteral, literalValue: "nil", literalType: "nil")
+  else:
+    value = parser.parseExpression()
+  
   Node(kind: nkReturnStmt, returnValue: value)
 
 proc parseStmt(parser: var Parser): Node =
@@ -364,7 +382,8 @@ proc parseStmt(parser: var Parser): Node =
       discard parser.advance()
       return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "PARSE ERROR", literalType: "error"))
   except:
-    return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "ERROR - " & getCurrentExceptionMsg(), literalType: "error"))
+    var msg = "ERROR - " & getCurrentExceptionMsg()
+    return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: msg, literalType: "error"))
 
 proc parse*(parser: var Parser): Node =
   var statements: seq[Node] = @[]

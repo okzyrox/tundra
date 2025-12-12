@@ -1,9 +1,8 @@
 ## Semantic analysis stuff
 ##
+import std/[options]
 
 import ast
-
-import options
 
 type
   Symbol = object
