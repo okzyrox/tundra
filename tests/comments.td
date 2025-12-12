@@ -2,8 +2,8 @@
 
 fn main() {
     // Line comment
-    // var a = 1
     var a = 2
+    // var b = 3
 
     /*
     multiline
@@ -11,5 +11,5 @@ fn main() {
     */
 
     println(a)
-    assert(a == 2, "a should be 2")
+    assert(a == 2, "Comment ignoring code failed")
 }

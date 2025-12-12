@@ -17,14 +17,14 @@ fn main() {
     println(s1 == s3)  // false
     println(s1 != s3)  // true
 
-    assert(a == b, "a should be equal to b")
-    assert(a != c, "a should not be equal to c")
-    assert(!(a == c), "a should not be equal to c")
-    assert(!(a != b), "a should be equal to b")
+    assert(a == b, "Boolean equality failed")
+    assert(a != c, "Boolean inequality failed")
+    assert(!(a == c), "Boolean equality negation failed")
+    assert(!(a != b), "Boolean inequality negation failed")
 
-    assert(s1 == s2, "s1 should be equal to s2")
-    assert(s1 != s3, "s1 should not be equal to s3")
-    assert(!(s1 == s3), "s1 should not be equal to s3")
+    assert(s1 == s2, "String equality failed")
+    assert(s1 != s3, "String inequality failed")
+    assert(!(s1 == s3), "String equality negation failed")
 
     var a = 5
     var b = 10
@@ -37,9 +37,8 @@ fn main() {
         println("a is not greater than b")
     }
 
-    assert(a < b, "a should be less than b")
-    assert(!(a > b), "a should not be greater than b")
-
+    assert(a < b, "LT comp. failed")
+    assert(!(a > b), "GT comp. negation failed")
     // comparitive
 
     var c = 5
@@ -51,8 +50,8 @@ fn main() {
     println(c <= 6)
     println(c <= 4)
 
-    assert(c <= d, "c should be less than or equal to d")
-    assert(c <= 5, "c should be less than or equal to 5")
-    assert(c <= 6, "c should be less than or equal to 6")
-    assert(!(c <= 4), "c should not be less than or equal to 4")
+    assert(c <= d, "LToE less failed")
+    assert(c <= 5, "LToE equal failed")
+    assert(c <= 6, "LToE greater failed")
+    assert(!(c <= 4), "LToE negation failed")
 }

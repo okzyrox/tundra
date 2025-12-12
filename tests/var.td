@@ -4,7 +4,7 @@ fn main() {
     x = x - 1
     println(tostring(x))
 
-    assert(x == 4, "x should be 4 after sub")
+    assert(x == 4, "Var subtraction failed")
 
     var a = 6
     var b = 7
@@ -12,7 +12,7 @@ fn main() {
     b = b - a
     println(tostring(b))
 
-    assert(b == 1, "b should be 1 after sub")
+    assert(b == 1, "Var subtraction 2 failed")
 
     var n = 4
     var m = 5
@@ -20,5 +20,5 @@ fn main() {
     o = o + m + n
 
     println(o)
-    assert(o == 9, "o should equal 9 after add")
+    assert(o == 9, "Var chain manual addition failed")
 }

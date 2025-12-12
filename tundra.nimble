@@ -14,3 +14,4 @@ binDir        = "bin"
 
 requires "nim >= 2.2.2"
 requires "cligen >= 1.7.3"
+requires "nake >= 1.9.5"

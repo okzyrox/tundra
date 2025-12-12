@@ -29,7 +29,7 @@ fn scopetest() {
 fn main() {
     var result = max(10, 5)
     println(result)
-    assert(result == 10, "result from `max(10, 5)` should be 10")
+    assert(result == 10, "Function using ifelse failed")
 
     // chain test
 
@@ -40,9 +40,9 @@ fn main() {
     println(is_zero)
     println(is_positive)
 
-    assert(is_negative == "negative", "is_negative should be negative")
-    assert(is_zero == "zero", "is_zero should be zero")
-    assert(is_positive == "positive", "is_positive should be positive")
+    assert(is_negative == "negative", "test_num negative failed")
+    assert(is_zero == "zero", "test_num zero failed")
+    assert(is_positive == "positive", "test_num positive failed")
     
     // scope test
 

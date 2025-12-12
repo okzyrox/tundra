@@ -72,6 +72,7 @@ proc getValueType(value: Value): string =
   of vtString: return "string"
   of vtBool: return "bool"
   of vtNil: return "nil"
+  of vtArgs: return "args"
   of vtTable: return "table"
   of vtFunc: return "function"
   else: return "unknown"
@@ -181,9 +182,7 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
         if right.kind == vtString:
           right.stringValue
         else:
-          $right & "\""
-      left = left.strip(leading = false, trailing = true, chars = {'\"'})
-      right = right.strip(leading = true, trailing = false, chars = {'\"'})
+          $right
       val = left & right
       return Value(kind: vtString, stringValue: val)
     else:

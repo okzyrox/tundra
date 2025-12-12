@@ -9,9 +9,9 @@ fn main() {
     println(b)
     println(c)
     println(d)
-    assert(a == "Hi!", "a should be 'Hi!'")
-    assert(b == 1, "b should be 1")
-    assert(c == 3.14, "c should be 3.14")
-    assert(d == 2.5, "d should be 2.5")
+    assert(a == "Hi!", "String assertions failed")
+    assert(b == 1, "Int assertions failed")
+    assert(c == 3.14, "Float assertions failed")
+    assert(d == 2.5, "Float division assertions failed")
 
 }

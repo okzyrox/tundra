@@ -6,10 +6,6 @@ import tundrapkg/interpreter as interp
 
 import os
 
-const TUNDRA_VERSION {.strdefine.}: string = "0.0.1-alpha"
-const TUNDRA_COMMIT {.strdefine.}: string = "0"
-
-
 proc run(source: string) =
   print "Source code length: ", source.len
   var lexer = newLexer(source)

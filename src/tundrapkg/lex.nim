@@ -124,6 +124,15 @@ proc readDigit(lexer: var Lexer, c: char) =
   else:
     lexer.addToken(tkInt)
 
+proc isIdent(c: char): bool =
+  if c.isAlphaAscii:
+    return true
+  
+  if c in ['_']: # is this peak code or what
+    return true
+  
+  return false
+
 proc readAlphaAscii(lexer: var Lexer, c: char) =
   while not lexer.atEnd() and (lexer.source[lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
     discard lexer.advance()
@@ -192,7 +201,7 @@ proc readToken(lexer: var Lexer) =
       lexer.addToken(tkString)
     elif c in ['{', '}']:
       lexer.addToken(tkSymbol)
-    elif c.isAlphaAscii:
+    elif c.isIdent:
       lexer.readAlphaAscii(c)
     else:
       echo "Unrecognized char: ", c

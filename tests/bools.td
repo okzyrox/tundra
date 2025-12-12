@@ -5,6 +5,6 @@ fn main() {
     println(a)
     println(b)
 
-    assert(a == true, "a should be true")
-    assert(b == false, "b should be false")
+    assert(a == true, "true failed")
+    assert(b == false, "false failed")
 }

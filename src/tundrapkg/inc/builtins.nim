@@ -38,16 +38,24 @@ const assertfunc = proc(args: Value): Value =
   return Value(kind: vtNil)
 
 const readfunc = proc(args: Value): Value =
-  let message = args.argsValue[0]
-  stdout.write(message.stringValue)
+  var message: string
+  if len(args.argsValue) != 1:
+    message = ""
+  else:
+    let value = args.argsValue[0]
+    message = value.stringValue
+  stdout.write(message)
   let input = readLine(stdin)
   return Value(kind: vtString, stringValue: input)
 
 const readlnfunc = proc(args: Value): Value =
+  var message: string
   if len(args.argsValue) != 1:
-    raise newException(ValueError, "Invalid number of arguments")
-  let message = args.argsValue[0]
-  stdout.write(message.stringValue & "\n")
+    message = ""
+  else:
+    let value = args.argsValue[0]
+    message = value.stringValue
+  stdout.write(message & "\n")
   let input = readLine(stdin)
   return Value(kind: vtString, stringValue: input)
 
@@ -56,20 +64,64 @@ const tostringfunc = proc(args: Value): Value =
     raise newException(ValueError, "Invalid number of arguments")
   try:
     let arg = args.argsValue[0]
-    if arg.kind == vtInt:
-      return Value(kind: vtString, stringValue: $arg.intValue)
-    elif arg.kind == vtFloat:
-      return Value(kind: vtString, stringValue: $arg.floatValue)
-    elif arg.kind == vtString:
-      return Value(kind: vtString, stringValue: arg.stringValue)
-    elif arg.kind == vtBool:
-      return Value(kind: vtString, stringValue: $arg.boolValue)
-    elif arg.kind == vtNil:
-      return Value(kind: vtString, stringValue: "nil")
-    else:
-      raise newException(ValueError, "Invalid string value")
+    let argStr = $arg
+    return Value(kind: vtString, stringValue: $argStr)
   except ValueError:
     raise newException(ValueError, "Invalid string value")
+
+const tointfunc = proc(args: Value): Value =
+  if len(args.argsValue) != 1:
+    raise newException(ValueError, "Invalid number of arguments")
+  let arg = args.argsValue[0]
+  if arg.kind == vtInt:
+    return arg
+  elif arg.kind == vtFloat:
+    return Value(kind: vtInt, intValue: int(arg.floatValue))
+  elif arg.kind == vtString:
+    let strValue = arg.stringValue
+    try:
+      let intValue = parseInt(strValue)
+      return Value(kind: vtInt, intValue: intValue)
+    except ValueError:
+      raise newException(ValueError, "Could not convert string to int")
+  else:
+    raise newException(ValueError, "Invalid argument type for toint()")
+
+const tofloatfunc = proc(args: Value): Value =
+  if len(args.argsValue) != 1:
+    raise newException(ValueError, "Invalid number of arguments")
+  let arg = args.argsValue[0]
+  if arg.kind == vtFloat:
+    return arg
+  elif arg.kind == vtInt:
+    return Value(kind: vtFloat, floatValue: float(arg.intValue))
+  elif arg.kind == vtString:
+    let strValue = arg.stringValue
+    try:
+      let floatValue = parseFloat(strValue)
+      return Value(kind: vtFloat, floatValue: floatValue)
+    except ValueError:
+      raise newException(ValueError, "Could not convert string to float")
+  else:
+    raise newException(ValueError, "Invalid argument type for tofloat()")
+
+const tonumberfunc = proc(args: Value): Value =
+  if len(args.argsValue) != 1:
+    raise newException(ValueError, "Invalid number of arguments")
+  let arg = args.argsValue[0]
+  if arg.kind != vtString:
+    raise newException(ValueError, "Invalid argument type for tonumber()")
+  let strValue = arg.stringValue
+  try:
+    let intValue = parseInt(strValue)
+    return Value(kind: vtInt, intValue: intValue)
+  except ValueError:
+    try:
+      let floatValue = parseFloat(strValue)
+      return Value(kind: vtFloat, floatValue: floatValue)
+    except ValueError:
+      raise newException(ValueError, "Could not convert string to number")
+
 
 const typeoffunc = proc(args: Value): Value =
   if len(args.argsValue) != 1:
@@ -87,20 +139,6 @@ const lenfunc = proc(args: Value): Value =
   else:
     raise newException(ValueError, "Invalid argument type for `len()`")
 
-# const keysfunc = proc(args: Value): Value =
-#   if len(args.argsValue) != 1:
-#     raise newException(ValueError, "Invalid num of arguments for keys()")
-  
-#   let arg = args.argsValue[0]
-#   if arg.kind != vtTable:
-#     raise newException(ValueError, "Cannot get keys of a non-table value")
-  
-#   var keys: seq[Value] = @[]
-#   for key in arg.tableValue.keys:
-#     keys.add(key)
-  
-#   return Value(kind: vtArgs, argsValue: keys)
-
 proc initializeGlobals*(interpreter: Interpreter) =
   interpreter.globals.define("print", Value(kind: vtFunc, funcValue: printfunc)) ## no new line
   interpreter.globals.define("println", Value(kind: vtFunc, funcValue: printlnfunc))
@@ -112,3 +150,21 @@ proc initializeGlobals*(interpreter: Interpreter) =
 
   # conversions
   interpreter.globals.define("tostring", Value(kind: vtFunc, funcValue: tostringfunc))
+  interpreter.globals.define("tonumber", Value(kind: vtFunc, funcValue: tonumberfunc))
+  interpreter.globals.define("toint", Value(kind: vtFunc, funcValue: tointfunc))
+  interpreter.globals.define("tofloat", Value(kind: vtFunc, funcValue: tofloatfunc))
+
+  # maths
+  
+
+  # global vars
+  interpreter.globals.define("_TUNDRA_VERSION", Value(kind: vtString, stringValue: utils.TUNDRA_VERSION))
+  interpreter.globals.define("_TUNDRA_COMMIT", Value(kind: vtString, stringValue: utils.TUNDRA_COMMIT))
+
+  interpreter.globals.define("globals", Value(kind: vtFunc, funcValue: proc(args: Value): Value =
+    var table: Table[Value, Value]
+    for key, value in interpreter.globals.values.pairs:
+      let keyValue = Value(kind: vtString, stringValue: key)
+      table[keyValue] = value
+    return Value(kind: vtTable, tableValue: table)
+  ))

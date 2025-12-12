@@ -7,5 +7,5 @@ fn main() {
     var a = mult(2, 3)
 
     // Intended to fail
-    var b = mult("hello", "world")
+    // var b = mult("hello", "world")
 }

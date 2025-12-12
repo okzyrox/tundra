@@ -6,7 +6,7 @@ fn main() {
         i = i + 1
     }
     println("After loop: " + tostring(i))
-    assert(i == 5, "i should be 5 after loop")
+    assert(i == 5, "Loop increment failed")
 
     // loopin2
 
@@ -20,7 +20,7 @@ fn main() {
     }
 
     println("After loop: " + tostring(i))
-    assert(i == 5, "i should be 5 after loop")
+    assert(i == 5, "Loop increment with break failed")
 
     var a = true
     var i = 0
@@ -32,5 +32,5 @@ fn main() {
         }
     }
 
-    assert(i == 10000, "i should be 10000 after loop")
+    assert(i == 10000, "Loop increment with cond. failed")
 }
