@@ -32,22 +32,24 @@ proc getTundraExe(exeName: string): Option[string] =
 
 task "debug", "Build":
   var extraArgs: seq[string] = @[]
-  let args = commandLineParams()
-  for ix, arg in args:
-    if ix == 0:
-      continue
-    extraArgs.add(arg)
+  when declared(commandLineParams):
+    let args = commandLineParams()
+    for ix, arg in args:
+      if ix == 0:
+        continue
+      extraArgs.add(arg)
   
   var flags = "-d:debug " & extraArgs.join(" ")
   shell(nimExe, "c", DebugFeatures, flags, "src/" & MainFile)
 
 task "release", "Build release version":
   var extraArgs: seq[string] = @[]
-  let args = commandLineParams()
-  for ix, arg in args:
-    if ix == 0:
-      continue
-    extraArgs.add(arg)
+  when declared(commandLineParams):
+    let args = commandLineParams()
+    for ix, arg in args:
+      if ix == 0:
+        continue
+      extraArgs.add(arg)
   
   var flags = " " & extraArgs.join(" ")
   shell(nimExe, "c", ReleaseFeatures, flags, "src/" & MainFile)
