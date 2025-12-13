@@ -2,7 +2,8 @@ import nake
 
 import std/[options]
 
-nake.validateShellCommands = true
+if getEnv("CI", "false") == "false": # noconfirm in actions
+  nake.validateShellCommands = true
 
 const
   MainFile = "tundra.nim"
