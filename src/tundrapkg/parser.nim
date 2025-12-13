@@ -85,6 +85,21 @@ proc parseTable(parser: var Parser): Node =
   discard parser.consume(tkBraceClose, "Expected '}' after table literal.")
   return Node(kind: nkTable, fields: fields)
 
+proc parseArray(parser: var Parser): Node =
+  print "Parsing array literal"
+  var elements: seq[Node] = @[]
+
+  if not parser.check(tkSquareBracketClose):
+    while true:
+      let element = parser.parseExpression()
+      elements.add(element)
+      
+      if not parser.match(tkSymbol) or parser.tokens[parser.current - 1].lexeme != ",":
+        break
+  
+  discard parser.consume(tkSquareBracketClose, "Expected ']' after array literal.")
+  return Node(kind: nkArray, elements: elements, count: elements.len)
+
 proc parseIndexAccess(parser: var Parser, target: Node): Node =
   # todo: need support for chaining index accesses (i.e. x[0][1][2])
   print "Parsing index access"
@@ -105,11 +120,35 @@ proc parsePrimary(parser: var Parser): Node =
     elif parser.match(tkNil):
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "nil")
     elif parser.match(tkIdent):
-      let identifier = Node(kind: nkIdentifier, identifierName: parser.tokens[parser.current - 1].lexeme)
-      if parser.match(tkBracketOpen):
-        return parser.parseCall(identifier)
-      elif parser.match(tkSquareBracketOpen):
-        return parser.parseIndexAccess(identifier)
+      var identifier = Node(kind: nkIdentifier, identifierName: parser.tokens[parser.current - 1].lexeme)
+      
+      while true:
+        if parser.match(tkBracketOpen):
+          identifier = parser.parseCall(identifier)
+        elif parser.match(tkSquareBracketOpen):
+          identifier = parser.parseIndexAccess(identifier)
+        elif parser.check(tkOperator) and parser.peek().lexeme == ".":
+          if parser.current + 1 < parser.tokens.len and parser.tokens[parser.current + 1].lexeme == ".":
+            break
+          
+          discard parser.advance()
+          let methodName = parser.consume(tkIdent, "Expected method after '.'").lexeme
+          
+          if parser.match(tkBracketOpen):
+            var arguments: seq[Node] = @[identifier]
+            
+            if not parser.check(tkBracketClose):
+              arguments.add(parser.parseExpression())
+              while parser.match(tkSymbol) and parser.tokens[parser.current - 1].lexeme == ",":
+                arguments.add(parser.parseExpression())
+            
+            discard parser.consume(tkBracketClose, "Expected ')' after args")
+            identifier = Node(kind: nkCall, callee: Node(kind: nkIdentifier, identifierName: methodName), arguments: arguments)
+          else:
+            throwParserError(parser, "Expected '(' after method name")
+        else:
+          break
+      
       return identifier
     elif parser.match(tkBracketOpen):
       let expr = parser.parseExpression()
@@ -117,6 +156,8 @@ proc parsePrimary(parser: var Parser): Node =
       return expr
     elif parser.match(tkBraceOpen):
       return parser.parseTable()
+    elif parser.match(tkSquareBracketOpen):
+      return parser.parseArray()
     elif parser.match(tkOperator):
       return Node(kind: nkLiteral, literalValue: parser.tokens[parser.current - 1].lexeme, literalType: "operator")
     else:
@@ -152,7 +193,8 @@ proc parseAdditive(parser: var Parser): Node =
     let right = parser.parseMultiplicative()
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
   
-  while parser.check(tkOperator) and parser.peek().lexeme == "..":
+  while parser.check(tkOperator) and parser.peek().lexeme == "..": # TODO: allow support for ranges as their own thing or something
+    # so i can do things like creating a range in a variable, or just use them in indexaccess and other stuff
     discard parser.advance() # consume ..
     let right = parser.parseMultiplicative()
     left = Node(kind: nkRange, rangeStart: left, rangeEnd: right)
@@ -223,7 +265,7 @@ proc parseFunctionDecl(parser: var Parser): Node =
         discard parser.advance() # consume '?'
         optional = true
 
-      if not (paramType in ["int", "float", "string", "bool"]):
+      if not (paramType in ["int", "float", "string", "bool", "any", "nil", "table", "array"]):
         throwParserError(parser, "Invalid parameter type: '" & paramType & "'.", false)
 
       params.add((name: paramName, typ: paramType, optional: optional))

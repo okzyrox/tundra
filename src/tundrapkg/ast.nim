@@ -4,7 +4,7 @@ type
   NodeKind* = enum
     nkProgram, nkVarDecl, nkConstDecl, nkFunctionDecl, nkIfStmt, nkWhileStmt,
     nkForStmt, nkBreakStmt, nkReturnStmt, nkExprStmt, nkBinaryExpr, nkUnaryExpr,
-    nkLiteral, nkIdentifier, nkCall, nkTable, nkIndexAccess, nkRange
+    nkLiteral, nkIdentifier, nkCall, nkArray, nkTable, nkIndexAccess, nkRange
 
   Node* = ref object
     case kind*: NodeKind
@@ -52,6 +52,9 @@ type
       arguments*: seq[Node]
     of nkTable:
       fields*: seq[tuple[key: Node, value: Node]]
+    of nkArray:
+      elements*: seq[Node]
+      count*: int # cache
     of nkIndexAccess:
       target*: Node
       index*: Node
@@ -76,6 +79,7 @@ proc `$`*(nodeKind: NodeKind): string =
   of nkLiteral: "Literal"
   of nkIdentifier: "Identifier"
   of nkCall: "Call"
+  of nkArray: "Array"
   of nkTable: "Table"
   of nkIndexAccess: "IndexAccess"
   of nkRange: "Range"

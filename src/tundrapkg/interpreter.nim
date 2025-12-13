@@ -6,7 +6,7 @@ import ast, utils
 
 type
   ValueType = enum
-    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier, vtTable
+    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier, vtTable, vtArray
 
   Value = object
     case kind: ValueType
@@ -14,11 +14,14 @@ type
     of vtFloat: floatValue: float
     of vtString: stringValue: string
     of vtBool: boolValue: bool
-    of vtFunc: funcValue: proc(args: Value): Value
+    of vtFunc: funcValue: proc(environment: Environment, args: Value): Value
     of vtOperator: binaryExpr: Node
     of vtArgs: argsValue: seq[Value]
     of vtIdentifier: identifierName: string
     of vtTable: tableValue: Table[Value, Value]
+    of vtArray: 
+      arrayValue: seq[Value]
+      count: int
     of vtNil: discard
 
   Environment = ref object
@@ -59,6 +62,15 @@ proc `==`(a, b: Value): bool =
     if b.kind != vtNil:
       return false
     return true
+  of vtArray:
+    if b.kind != vtArray:
+      return false
+    if a.count != b.count:
+      return false
+    for i in 0..<a.count:
+      if a.arrayValue[i] != b.arrayValue[i]:
+        return false
+    return true
   else:
     return false
 
@@ -73,6 +85,7 @@ proc getValueType(value: Value): string =
   of vtBool: return "bool"
   of vtNil: return "nil"
   of vtArgs: return "args"
+  of vtArray: return "array"
   of vtTable: return "table"
   of vtFunc: return "function"
   else: return "unknown"
@@ -118,6 +131,16 @@ proc set(env: Environment, name: string, value: Value) =
   else:
     raise newException(ValueError, "Undefined variable '" & name & "'")
 
+proc set(env: Environment, ogValue: Value, newValue: Value) = # really sucks but the only way to update with func
+  for key, val in env.values:
+    if val == ogValue:
+      env.values[key] = newValue
+      return
+  if env.parent != nil:
+    env.parent.set(ogValue, newValue)
+  else:
+    raise newException(ValueError, "Undefined value to set.")
+
 proc evaluate(interpreter: Interpreter, node: Node): Value
 
 proc evaluateLiteral(interpreter: Interpreter, node: Node): Value =
@@ -153,8 +176,13 @@ proc `$`(v: Value): string =
     for key, val in v.tableValue:
       output.add($key & ": " & $val)
     "{" & output.join(", ") & "}"
+  of vtArray:
+    var output: seq[string] = @[]
+    for elem in v.arrayValue:
+      output.add($elem)
+    "[" & output.join(", ") & "]"
   else:
-    "other value kind"
+    "<unknown>"
 
 proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
   interpreter.environment.get(node.identifierName)
@@ -316,7 +344,7 @@ proc evaluateVarDecl(interpreter: Interpreter, node: Node): Value =
   return value
 
 proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
-  let function = proc(args: Value): Value =
+  let function = proc(environment: Environment, args: Value): Value =
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(if prevEnv.parent != nil: prevEnv.parent else: interpreter.globals)
     for i, param in node.params:
@@ -435,7 +463,8 @@ proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =
   interpreter.environment = newEnvironment(prevEnv)
   
   try:
-    if node.forLoopIterable.kind == nkRange: # assume range (i.e. 1..10)
+    let kind = node.forLoopIterable.kind
+    if kind == nkRange: # assume range (i.e. 1..10)
       let startVal = interpreter.evaluate(node.forLoopIterable.rangeStart)
       let endVal = interpreter.evaluate(node.forLoopIterable.rangeEnd)
       
@@ -453,9 +482,8 @@ proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =
         for stmt in node.forLoopBody:
           discard interpreter.evaluate(stmt)
 
-    else: # assume table; TODO: assume array for when i implement that
+    else:
       let iterable = interpreter.evaluate(node.forLoopIterable)
-      
       case iterable.kind
       of vtTable:
         var isFirst = true
@@ -483,8 +511,21 @@ proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =
               discard interpreter.evaluate(stmt)
         else:
           raise newException(ValueError, "Invalid number of loop variables for table iteration")
+      of vtArray:
+        if node.forLoopVars.len != 1:
+          raise newException(ValueError, "Invalid number of loop variables for array iteration")
+        
+        var isFirst = true
+        for element in iterable.arrayValue:
+          if isFirst:
+            interpreter.environment.define(node.forLoopVars[0], element)
+            isFirst = false
+          else:
+            interpreter.environment.set(node.forLoopVars[0], element)
+          for stmt in node.forLoopBody:
+            discard interpreter.evaluate(stmt)
       else:
-        raise newException(ValueError, "Can only iterate over tables or ranges")
+        raise newException(ValueError, "Can only iterate over tables, arrays and ranges")
   except BreakException:
     discard
   finally:
@@ -509,12 +550,7 @@ proc evaluateCall(interpreter: Interpreter, node: Node): Value =
   if callee.kind != vtFunc:
     raise newException(ValueError, "Can only call functions.")
   
-  if funcName != "":
-    # todo: give interpreter knowledge of builtins available
-    for fn in ["println", "print", "assert", "read", "readln"]:
-      if funcName == fn:
-        return callee.funcValue(arguments)
-    
+  if funcName != "":    
     for stmt in interpreter.globals.values.keys:
       if stmt == funcName:
         let funcVal = interpreter.globals.values[stmt]
@@ -545,7 +581,7 @@ proc evaluateCall(interpreter: Interpreter, node: Node): Value =
                   expectedType & "', got '" & actualType & "'")
   
   # run the function if it's all good
-  return callee.funcValue(arguments)
+  return callee.funcValue(interpreter.environment, arguments)
 
 proc evaluateTable(interpreter: Interpreter, node: Node): Value =
   var table = initTable[Value, Value]()
@@ -554,6 +590,13 @@ proc evaluateTable(interpreter: Interpreter, node: Node): Value =
     let value = interpreter.evaluate(field.value)
     table[key] = value
   return Value(kind: vtTable, tableValue: table)
+
+proc evaluateArray(interpreter: Interpreter, node: Node): Value =
+  var elements = newSeq[Value](0)
+  for elementNode in node.elements:
+    let elementValue = interpreter.evaluate(elementNode)
+    elements.add(elementValue)
+  return Value(kind: vtArray, arrayValue: elements, count: elements.len)
 
 proc evaluateIndexAccess(interpreter: Interpreter, node: Node): Value =
   let target = interpreter.evaluate(node.target)
@@ -566,13 +609,28 @@ proc evaluateIndexAccess(interpreter: Interpreter, node: Node): Value =
   # print(s[0]) # h
   # ```
   # or something...
-  if target.kind != vtTable: 
+  if target.kind == vtTable:
+    if target.tableValue.hasKey(index):
+      return target.tableValue[index]
+    else:
+      return Value(kind: vtNil)  # Return nil for non-existent keys
+  elif target.kind == vtArray:
+    if index.kind != vtInt:
+      raise newException(ValueError, "Array index must be an integer")
+    if index.intValue < 0 or index.intValue >= target.count:
+      raise newException(ValueError, "Array index out of bounds")
+    return target.arrayValue[index.intValue]
+  elif target.kind == vtString:
+    if index.kind != vtInt:
+      raise newException(ValueError, "String index must be an integer")
+    if index.intValue < 0 or index.intValue >= target.stringValue.len:
+      raise newException(ValueError, "String index out of bounds")
+    let charValue = target.stringValue[index.intValue]
+    return Value(kind: vtString, stringValue: $charValue)
+  else: 
     raise newException(ValueError, "Cannot index a non-table value")
   
-  if target.tableValue.hasKey(index):
-    return target.tableValue[index]
-  else:
-    return Value(kind: vtNil)  # Return nil for non-existent keys
+  
 
 proc evaluate(interpreter: Interpreter, node: Node): Value =
   print "evaluating ", node.kind
@@ -615,6 +673,8 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       return interpreter.evaluateCall(node)
     of nkTable:
       return interpreter.evaluateTable(node)
+    of nkArray:
+      return interpreter.evaluateArray(node)
     of nkIndexAccess:
       return interpreter.evaluateIndexAccess(node)
     of nkRange:

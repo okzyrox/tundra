@@ -1,5 +1,5 @@
 ## Builtins
-const printfunc = proc(args: Value): Value =
+const printfunc = proc(env: Environment, args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
     for ix, item in args.argsValue:
@@ -11,7 +11,7 @@ const printfunc = proc(args: Value): Value =
   stdout.write(output)
   return Value(kind: vtNil)
 
-const printlnfunc = proc(args: Value): Value =
+const printlnfunc = proc(env: Environment, args: Value): Value =
   var output = ""
   if args.kind == vtArgs:
     for ix, item in args.argsValue:
@@ -23,7 +23,7 @@ const printlnfunc = proc(args: Value): Value =
   stdout.write(output & "\n")
   return Value(kind: vtNil)
 
-const assertfunc = proc(args: Value): Value =
+const assertfunc = proc(env: Environment, args: Value): Value =
   if len(args.argsValue) < 1:
     raise newException(ValueError, "Invalid number of arguments")
   
@@ -37,7 +37,7 @@ const assertfunc = proc(args: Value): Value =
 
   return Value(kind: vtNil)
 
-const readfunc = proc(args: Value): Value =
+const readfunc = proc(env: Environment, args: Value): Value =
   var message: string
   if len(args.argsValue) != 1:
     message = ""
@@ -48,7 +48,7 @@ const readfunc = proc(args: Value): Value =
   let input = readLine(stdin)
   return Value(kind: vtString, stringValue: input)
 
-const readlnfunc = proc(args: Value): Value =
+const readlnfunc = proc(env: Environment, args: Value): Value =
   var message: string
   if len(args.argsValue) != 1:
     message = ""
@@ -59,7 +59,7 @@ const readlnfunc = proc(args: Value): Value =
   let input = readLine(stdin)
   return Value(kind: vtString, stringValue: input)
 
-const tostringfunc = proc(args: Value): Value =
+const tostringfunc = proc(env: Environment, args: Value): Value =
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   try:
@@ -69,7 +69,7 @@ const tostringfunc = proc(args: Value): Value =
   except ValueError:
     raise newException(ValueError, "Invalid string value")
 
-const tointfunc = proc(args: Value): Value =
+const tointfunc = proc(env: Environment, args: Value): Value =
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   let arg = args.argsValue[0]
@@ -87,7 +87,7 @@ const tointfunc = proc(args: Value): Value =
   else:
     raise newException(ValueError, "Invalid argument type for toint()")
 
-const tofloatfunc = proc(args: Value): Value =
+const tofloatfunc = proc(env: Environment, args: Value): Value =
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   let arg = args.argsValue[0]
@@ -105,7 +105,7 @@ const tofloatfunc = proc(args: Value): Value =
   else:
     raise newException(ValueError, "Invalid argument type for tofloat()")
 
-const tonumberfunc = proc(args: Value): Value =
+const tonumberfunc = proc(env: Environment, args: Value): Value =
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   let arg = args.argsValue[0]
@@ -122,22 +122,42 @@ const tonumberfunc = proc(args: Value): Value =
     except ValueError:
       raise newException(ValueError, "Could not convert string to number")
 
-
-const typeoffunc = proc(args: Value): Value =
+const typeoffunc = proc(env: Environment, args: Value): Value =
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   return Value(kind: vtString, stringValue: getValueType(args.argsValue[0]))
 
-const lenfunc = proc(args: Value): Value = 
+const lenfunc = proc(env: Environment, args: Value): Value = 
   if len(args.argsValue) != 1:
     raise newException(ValueError, "Invalid number of arguments")
   let arg = args.argsValue[0]
   if arg.kind == vtString:
-    # probably should sort out the quotes stuff
-    # i mean its fine for now and asserts work cause of it but still...
     return Value(kind: vtInt, intValue: arg.stringValue.len)
+  elif arg.kind == vtArray:
+    return Value(kind: vtInt, intValue: arg.count)
   else:
     raise newException(ValueError, "Invalid argument type for `len()`")
+
+const appendfunc = proc(env: Environment, args: Value): Value =
+  if len(args.argsValue) != 2:
+    raise newException(ValueError, "Invalid number of arguments")
+  let arrayVal = args.argsValue[0]
+  let elementVal = args.argsValue[1]
+  if arrayVal.kind != vtArray:
+    raise newException(ValueError, "Cannot append to something that is not an array")
+  
+  var elements = arrayVal.arrayValue
+  elements.add(elementVal)
+  
+  var newVal = Value(
+    kind: vtArray,
+    arrayValue: elements,
+    count: elements.len
+  )
+
+  env.set(arrayVal, newVal)
+
+  return Value(kind: vtNil)
 
 proc initializeGlobals*(interpreter: Interpreter) =
   interpreter.globals.define("print", Value(kind: vtFunc, funcValue: printfunc)) ## no new line
@@ -155,13 +175,15 @@ proc initializeGlobals*(interpreter: Interpreter) =
   interpreter.globals.define("tofloat", Value(kind: vtFunc, funcValue: tofloatfunc))
 
   # maths
-  
+
+  # array
+  interpreter.globals.define("append", Value(kind: vtFunc, funcValue: appendfunc))
 
   # global vars
   interpreter.globals.define("_TUNDRA_VERSION", Value(kind: vtString, stringValue: utils.TUNDRA_VERSION))
   interpreter.globals.define("_TUNDRA_COMMIT", Value(kind: vtString, stringValue: utils.TUNDRA_COMMIT))
 
-  interpreter.globals.define("globals", Value(kind: vtFunc, funcValue: proc(args: Value): Value =
+  interpreter.globals.define("globals", Value(kind: vtFunc, funcValue: proc(env: Environment, args: Value): Value =
     var table: Table[Value, Value]
     for key, value in interpreter.globals.values.pairs:
       let keyValue = Value(kind: vtString, stringValue: key)
