@@ -37,13 +37,13 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tundra
+          name: tundra-win
           path: bin/tundra.exe
         
       - name: Upload debug build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tundra-debug
+          name: tundra-debug-win
           path: "tundra_debug.exe"
 
   build-linux:
@@ -70,5 +70,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: tundra
+          name: tundra-linux
           path: bin/tundra
