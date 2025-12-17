@@ -1,7 +1,5 @@
 ## Parser
 ## 
-import std/[strutils]
-
 import lex
 import ast
 
@@ -12,6 +10,7 @@ type Parser = object
   current: int
 
 type ParserError = object of ValueError
+type ParserTokenError = object of ValueError
 
 proc newParser*(tokens: seq[Token]): Parser =
   Parser(tokens: tokens, current: 0)
@@ -178,7 +177,7 @@ proc parseUnary(parser: var Parser): Node =
 proc parseMultiplicative(parser: var Parser): Node =
   var left = parser.parseUnary()
   
-  while parser.check(tkOperator) and parser.peek().lexeme in ["*", "/", "%", "^"]:
+  while parser.check(tkOperator) and parser.peek().lexeme in ["*", "/", "%", "^", "&&", "||"]:
     let operator = parser.advance().lexeme
     let right = parser.parseUnary()
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
@@ -278,7 +277,7 @@ proc parseFunctionDecl(parser: var Parser): Node =
   while not parser.check(tkBraceClose):
     if parser.atEnd(): break
     body.add(parser.parseStmt())
-  discard parser.consume(tkBraceClose, "Expected '}' after function body.")
+  discard parser.consume(tkBraceClose, "Expected '}' to close function '" & name & "'.")
   Node(kind: nkFunctionDecl, fnName: name, params: params, body: body)
 
 proc parseIfStmt(parser: var Parser): Node =
@@ -395,7 +394,7 @@ proc parseReturnStmt(parser: var Parser): Node =
   Node(kind: nkReturnStmt, returnValue: value)
 
 proc parseStmt(parser: var Parser): Node =
-  print "Parsing statement, current token: ", parser.peek().kind
+  print "Statement - Parsing token: ", parser.peek().kind
   try:
     if parser.peek().kind == tkKeyword:
       var keyword = parser.peek().lexeme
@@ -420,20 +419,24 @@ proc parseStmt(parser: var Parser): Node =
     elif parser.peek().kind in [tkIdent, tkOperator, tkInt, tkFloat, tkString, tkBool, tkEquals]:
       return parser.parseExpressionStmt()
     else:
-      echo "Unexpected token in statement: ", parser.peek().kind
-      discard parser.advance()
-      return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: "PARSE ERROR", literalType: "error"))
-  except:
-    var msg = "ERROR - " & getCurrentExceptionMsg()
-    return Node(kind: nkExprStmt, expr: Node(kind: nkLiteral, literalValue: msg, literalType: "error"))
+      var msg = "Unexpected " & $parser.peek().kind & " in statement: '" & parser.peek().lexeme & "'"
+      raise newException(ParserTokenError, msg)
+  except ParserTokenError:
+    var msg = getCurrentExceptionMsg()
+    throwParserError(parser, msg, false)
 
 proc parse*(parser: var Parser): Node =
   var statements: seq[Node] = @[]
   print "Starting parsing, total tokens: ", parser.tokens.len
-  while not parser.atEnd() and parser.peek().kind != tkEOF:
-    print("Parsing statement at position: ", parser.current)
-    let statement = parser.parseStmt()
-    print "Statement parsed: ", statement.kind
-    statements.add(statement)
+  try:
+    while not parser.atEnd() and parser.peek().kind != tkEOF:
+      print("Parsing statement at position: ", parser.current)
+      let statement = parser.parseStmt()
+      print "Statement parsed: ", statement.kind
+      statements.add(statement)
+  except:
+    var msg = "Parsing Error - " & getCurrentExceptionMsg()
+    echo msg
+    quit(-1)
   print "Parsing complete, total statements: ", statements.len
   Node(kind: nkProgram, statements: statements)

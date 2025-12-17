@@ -68,7 +68,7 @@
 		},
 		"operators": {
 			"name": "keyword.operator.tundra",
-			"match": "(==|!=|!|\\+|-|\\*|/|%)"
+			"match": "(==|!=|!|\\+|-|\\*|/|%|&&|\\|\\|)"
 		},
 		"constants": {
 			"patterns": [{

@@ -1,50 +1,42 @@
 import tundrapkg/utils
 import tundrapkg/lex
+import tundrapkg/ast
 import tundrapkg/parser
-import tundrapkg/analyzer
 import tundrapkg/interpreter as interp
 
-import os
+import std/[os, strutils, json]
 
-proc run(source: string) =
+proc run(filename: string, source: string) =
   print "Source code length: ", source.len
   var lexer = newLexer(source)
-  print "Lexer created"
   let tokens = lexer.readTokens()
   print "Tokens read: ", tokens.len
   
   var parser = newParser(tokens)
-  print "Parser created"
   let ast = parser.parse()
-  print "AST created"
+
+  let astDump = ast.dumpJson()
+  if not dirExists("dump"):
+    createDir("dump")
+
+  writeFile("dump/" & filename & ".json", $astDump.pretty())
   
-  var analyzer = newSemanticAnalyzer()
-  print "Semantic analyzer created"
-  analyzer.addGlobals()
-  analyzer.analyze(ast)
-  print "Semantic analysis complete"
-  
-  if analyzer.errors.len > 0:
-    for error in analyzer.errors:
-      echo "Semantic error: ", error
-  else:
-    var interpreter = newInterpreter()
-    print "Interpreter created"
-    interpreter.initializeGlobals()
-    print "Globals initialized"
-    interpreter.interpret(ast)
-    print "Interpretation complete"
+  var interpreter = newInterpreter()
+  interpreter.initializeGlobals()
+  print "Globals initialized"
+  interpreter.interpret(ast)
   
 proc getVersion(): void =
   echo "-- Tundra Interpreter --"
   echo "Version: " & TUNDRA_VERSION
   echo "Commit: " & TUNDRA_COMMIT
 
-proc main(file_path: string = "", version: bool = false): void =
+proc tundra(file_path: string = "", version: bool = false): void =
   if file_path != "":
     if fileExists(file_path):
       let source = readFile(file_path)
-      run(source)
+      let path_name = file_path.replace(".td", "").replace("/", "_").replace("\\", "_")
+      run(path_name, source)
     else:
       echo "File not found: ", file_path
   elif version:
@@ -53,5 +45,5 @@ proc main(file_path: string = "", version: bool = false): void =
     echo "No file path provided. Use --help for more information."
 
 when isMainModule:
-  import cligen; dispatch main, help = {"file_path": "The path to the file to run (.td extension)",
-  "version": "Build version"}
+  import cligen
+  dispatch tundra, help = {"file_path": "The path to the file to run (.td extension)", "version": "Build version"}

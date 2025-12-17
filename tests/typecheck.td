@@ -1,4 +1,3 @@
-// Note: this test is intentionally designed to fail, to show how type checking works
 fn mult(a: int, b: int) {
     return a * b
 }
@@ -6,6 +5,10 @@ fn mult(a: int, b: int) {
 fn main() {
     var a = mult(2, 3)
 
-    // Intended to fail
-    // var b = mult("hello", "world")
+    assert(typeof("a") == "string", "Typeof string failed")
+    assert(typeof(12) == "int", "Typeof int failed")
+    assert(typeof(3.14) == "float", "Typeof float failed")
+    assert(typeof(true) == "bool", "Typeof bool failed")
+    assert(typeof(nil) == "nil", "Typeof nil failed")
+    assert(typeof(main) == "function", "Typeof function failed")
 }

@@ -33,6 +33,26 @@ fn main() {
     println(negativeB)
     assert(negativeB == -9, "Int negation failed")
 
+    // L AND
+    var c = true && false
+    println(c)
+    assert(c == false, "Logical AND failed")
+    assert(true && true == true, "Logical AND failed (2)")
 
+    var ci = 1 && 0
+    println(ci)
+    assert(ci == false, "Logical AND with ints failed")
+    assert(1 && 1 == true, "Logical AND with ints failed (2)")
 
+    // L OR
+    var d = true || false
+    println(d)
+    assert(d == true, "Logical OR failed")
+    assert(false || false == false, "Logical OR failed (2)")
+
+    var di = 0 || 1
+    println(di)
+    assert(di == true, "Logical OR with ints failed")
+    assert(0 || 0 == false, "Logical OR with ints failed (2)")
+    
 }

@@ -5,6 +5,7 @@ fn main() {
     println(a)
     println(b)
 
-    assert(a == true, "true failed")
+    // wonderful tests i know
+    assert(a == true, "true failed")    
     assert(b == false, "false failed")
 }

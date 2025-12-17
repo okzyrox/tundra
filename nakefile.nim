@@ -1,6 +1,6 @@
 import nake
 
-import std/[options]
+import std/[options, sequtils, os, algorithm]
 
 if getEnv("CI", "false") == "false": # noconfirm in actions
   nake.validateShellCommands = true
@@ -65,11 +65,17 @@ task "runTundraTests", "Run Tundra tests":
   
   nake.validateShellCommands = false
   
-  var tests: Table[string, string] # path; name
+  var tests: OrderedTable[string, string] # path; name
   var failedTests: seq[string] = @[]
 
   # get tests
-  for pathComp, filePath in walkDir("tests/"):
+  var testFiles = toSeq(walkDir("tests/", relative=true))
+  sort(testFiles)
+
+  for pathComp, fileData in testFiles:
+    let fileKind = fileData.kind
+    let filePath = fileData.path
+
     if filePath.endsWith(".td"):
       let testName = filePath.splitPath().tail.replace(".td", "")
       if testName in SkippedTests:

@@ -257,6 +257,20 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
         discard
     else:
       discard
+  of "&&":
+    if left.kind == vtBool and right.kind == vtBool:
+      return Value(kind: vtBool, boolValue: left.boolValue and right.boolValue)
+    if left.kind == vtInt and right.kind == vtInt:
+      return Value(kind: vtBool, boolValue: (left.intValue != 0) and (right.intValue != 0))
+    else:
+      discard
+  of "||":
+    if left.kind == vtBool and right.kind == vtBool:
+      return Value(kind: vtBool, boolValue: left.boolValue or right.boolValue)
+    if left.kind == vtInt and right.kind == vtInt:
+      return Value(kind: vtBool, boolValue: (left.intValue != 0) or (right.intValue != 0))
+    else:
+      discard
   of "==":
     return Value(kind: vtBool, boolValue: left == right)
   of "!=":
@@ -679,14 +693,14 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
       return interpreter.evaluateIndexAccess(node)
     of nkRange:
       return Value(kind: vtNil) # only used in for loops; if it isnt then something is very very very wrong....
-    else:
-      raise newException(ValueError, "Unexpected node type: " & $node.kind)
+    # else:
+    #   raise newException(ValueError, "Unexpected node type: " & $node.kind)
   except BreakException:
     print("Broken out of loop")
     raise newException(BreakException, getCurrentExceptionMsg())
   except:
     echo "Error: ", getCurrentExceptionMsg()
-    quit(1)
+    quit(-1)
     #return Value(kind: vtNil)
     
   #else:
@@ -721,4 +735,4 @@ proc interpret*(interpreter: Interpreter, node: Node) =
     # let e = getCurrentException()
     let msg = getCurrentExceptionMsg()
     echo "Error: ", msg
-    quit(1)
+    quit(-1)
