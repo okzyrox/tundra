@@ -1,5 +1,6 @@
 # Tundra language
-An opionated theoretical language
+An opionated ~~theoretical~~ language
+
 File suffix: `.td`
 
 ## Structure
@@ -8,38 +9,39 @@ File suffix: `.td`
 
 The standard keywords list.
 
-- `var`
-- `const`
-- `if`
-- `else`
-- `elseif`
-- `while`
-- `do`
-- `for`
-- `in`
-- `not`
-- `or`
-- `and`
-- `break`
-- `continue`
-- `return`
-- `scope`
-- `class`
+- [x] `var`
+- [ ] `const`
+- [x] `if`
+- [x] `else`
+- [x] `elseif`
+- [x] `while`
+- [ ] `do`
+- [x] `for`
+- [x] `in`
+- [ ] `is`
+- [ ] `not`
+- [x] `or`
+- [ ] `and`
+- [x] `break`
+- [ ] `continue`
+- [x] `return`
+- [ ] `scope`
+- [ ] `class`
+- [ ] `enum`
 
-- `fn`
-- `func`
-- `function`
+- [x] `fn`
+- [x] `func`
+- [x] `function`
 
-
-- `pub`
-- `priv`
+- [ ] `pub`
+- [ ] `priv`
 
 
 Standard values:
 
-- `true`
-- `false`
-- `nil`
+- [x] `true`
+- [x] `false`
+- [x] `nil`
 
 ### Variables
 
@@ -268,10 +270,10 @@ and..
 
 #### Other Operators
 
-- `&` (string concatenation)
-- `&&` (bitwise and)
-- `||` (bitwise or)
-- `!!` (bitwise not)
+- [ ] `&` (string concatenation)
+- [x] `&&` (bitwise and)
+- [x] `||` (bitwise or)
+- ~~`!!` (bitwise not)~~
 
 Operators are often performed in `if` statements, and can be used in other places as well.
 
@@ -457,8 +459,8 @@ If you want a function that can be called regardless of argument types then:
 ```go
 
 fn say(output: any) {
-    if ($output != nil) {
-        println($output) // String conversion
+    if (output != nil) {
+        println(output)
     }
 }
 
@@ -494,22 +496,28 @@ int sub(a: int, b: int) { // Automatically becomes: `fn sub(a: int, b: int): int
 }
 ```
 
-For custom types, enums, and other things, you can create `symbol functions`
+### Enums
 
-Symbol functions can only have 1 argument, being the object that they are called on.
+Set of values
 
-```go
+```ts
 
-// Assuming a type called MyType, with a string field called name
-
-fn '$'(x: MyType): string { // single quotes are used for symbol functions
-    return x.name
+enum Weather = {
+    Clear,
+    Cloudy,
+    Rainy,
+    Tundra
 }
 
-var john = MyType { name: "John" }
+var a = Weather.Clear
+var b = Clear // indifferent; although if multiple enums with the same key names exist then its required
 
-println($john) // >>> "John"
-
+enum Priority = {
+    Low = 0,
+    Medium = 4,
+    High = 8,
+    VeryHigh = 10
+} // Can be numbered
 
 ```
 
@@ -664,7 +672,7 @@ println(john.get_age()) // >>> 31
 
 Classes can be extended by other classes. Extended classes inherit the fields and methods of the extended class.
 
-```rust
+```groovy
 
 class Person {
     var name: string
@@ -675,7 +683,7 @@ fn Person.greet(person: Person) {
     println($"Hello, {person.name}!")
 }
 
-class Employee of Person {
+class Employee extends Person {
     var years_worked: int
 }
 
@@ -702,7 +710,7 @@ if (typeof(john) == Employee) { // typeof works with classes too
 
 Errors can be caught using a standard `try` and `catch` syntax, each with scopes.
 
-```go
+```java
 
 
 try {
@@ -713,6 +721,13 @@ try {
     println($"Error: {e}") // >>> Error: cannot concatenate int and string
 }
 
+// chain
+
+try {
+    thisfunction()
+} catch (e1: ThisError) {
+
+} catch (e2: ThisOtherError) {} // further applies to the other catch block (if that somehow breaks as well...)
 
 
 // Using functions
@@ -729,7 +744,7 @@ try do_something("hello") catch (e: StdError) {
 
 Custom errors can be made too.
 
-```go
+```java
 
 const class MyError extends StdError {
     msg: "Something went wrong"
@@ -860,6 +875,7 @@ There are various built in functions and methods that can be used.
 - [x] `print()`  Prints to the console
 - [x] `println()`  Prints to the console with a newline at the end
 - [x] `read()`  Returns a string
+- [x] `readln()` 
 
 #### Math
 
@@ -874,8 +890,8 @@ There are various built in functions and methods that can be used.
 
 #### String
 
-- `tostring(x: any)`  String conversion
-- `len()`  Returns the length of a string
+- [x] `tostring(x: any)`  String conversion
+- [x] `len()`  Returns the length of a string
 - `lower()`  Converts a string to lowercase
 - `upper()`  Converts a string to uppercase
 - `trim()`  Removes leading and trailing whitespace
@@ -885,8 +901,15 @@ There are various built in functions and methods that can be used.
 
 #### Int/Float
 
-- `toint(x: any)`  Integer conversion
-- `tofloat(x: any)`  Float conversion
+- [x] `toint(x: any)`  Integer conversion
+- [x] `tofloat(x: any)`  Float conversion
+- [x] `tonumber(x: any` Converts to either Integer or Float
+
+#### General
+
+- [x] `assert(condition, error: string)`
+- [x] `typeof(value: any)`  Returns the type of the value
+- [x] `globals()`  Returns a Table of values registered as globals
 
 ### Running
 

@@ -401,7 +401,7 @@ proc parseStmt(parser: var Parser): Node =
       case keyword
       of "var":
         return parser.parseVarDecl()
-      of "fn":
+      of "fn", "func", "function":
         return parser.parseFunctionDecl()
       of "if":
         return parser.parseIfStmt()

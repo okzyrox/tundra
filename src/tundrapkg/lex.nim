@@ -137,7 +137,7 @@ proc readAlphaAscii(lexer: var Lexer, c: char) =
   while not lexer.atEnd() and (lexer.source[lexer.current].isAlphaNumeric or lexer.source[lexer.current] == '_'):
     discard lexer.advance()
   let lexeme = lexer.source[lexer.start..<lexer.current]
-  if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "return", "while", "break", "for", "in", "do"]:
+  if lexeme in ["var", "const", "if", "else", "elseif", "break", "fn", "func", "function", "return", "while", "break", "for", "in", "do"]:
     lexer.addToken(tkKeyword)
   elif lexeme in ["true", "false"]:
     lexer.addToken(tkBool)

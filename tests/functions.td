@@ -1,8 +1,8 @@
-fn speak(person: string) {
+function speak(person: string) {
     println("Hello, " + person + "!")
 }
 
-fn add(a: int, b: int) {
+func add(a: int, b: int) {
     return a + b
 }
 
