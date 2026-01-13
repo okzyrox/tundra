@@ -39,6 +39,15 @@ fn main() {
     }
 
     for (var key, value in mixedtable) {
-        println(key, value)
+        if (typeof(value) == "table") {
+            println(key, ":")
+            for (var k, v in value) {
+                println("  ", k, ":", v)
+            }
+        } else {
+            println(key, ":", value)
+        }
     }
+
+    println(mixedtable["b"]["bar"])
 }

@@ -2,6 +2,7 @@
 *.dll
 
 .vscode/
+.idea/
 build/
 bin/
 dump/

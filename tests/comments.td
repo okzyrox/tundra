@@ -11,5 +11,6 @@ fn main() {
     */
 
     println(a)
-    assert(a == 2, "Comment ignoring code failed")
+    // a = 3
+    assert(a == 2, "Comment ignoring failed")
 }

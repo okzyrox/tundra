@@ -6,7 +6,7 @@ import ast, utils
 
 type
   ValueType = enum
-    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier, vtTable, vtArray
+    vtFunc, vtInt, vtFloat, vtString, vtBool, vtNil, vtArgs, vtOperator, vtIdentifier, vtTable, vtArray, vtRange
 
   Value = object
     case kind: ValueType
@@ -22,6 +22,9 @@ type
     of vtArray: 
       arrayValue: seq[Value]
       count: int
+    of vtRange:
+      rangeStart: int
+      rangeEnd: int
     of vtNil: discard
 
   Environment = ref object
@@ -71,6 +74,10 @@ proc `==`(a, b: Value): bool =
       if a.arrayValue[i] != b.arrayValue[i]:
         return false
     return true
+  of vtRange:
+    if b.kind != vtRange:
+      return false
+    return a.rangeStart == b.rangeStart and a.rangeEnd == b.rangeEnd
   else:
     return false
 
@@ -87,6 +94,7 @@ proc getValueType(value: Value): string =
   of vtArgs: return "args"
   of vtArray: return "array"
   of vtTable: return "table"
+  of vtRange: return "range"
   of vtFunc: return "function"
   else: return "unknown"
 
@@ -96,7 +104,7 @@ proc hash(v: Value): Hash =
   of vtFloat: hash(v.floatValue)
   of vtString: hash(v.stringValue)
   of vtBool: hash(v.boolValue)
-  else: hash(0)  # Default fallback for non-hashable types
+  else: hash(0)
 
 proc newEnvironment(parent: Environment = nil): Environment =
   Environment(values: initTable[string, Value](), parent: parent)
@@ -175,12 +183,14 @@ proc `$`(v: Value): string =
     var output: seq[string] = @[]
     for key, val in v.tableValue:
       output.add($key & ": " & $val)
-    "{" & output.join(", ") & "}"
+    "table{" & output.join(", ") & "}"
   of vtArray:
     var output: seq[string] = @[]
     for elem in v.arrayValue:
       output.add($elem)
-    "[" & output.join(", ") & "]"
+    "array[" & output.join(", ") & "]"
+  of vtRange:
+    "range<" & $v.rangeStart & ".." & $v.rangeEnd & ">"
   else:
     "<unknown>"
 
@@ -358,6 +368,9 @@ proc evaluateVarDecl(interpreter: Interpreter, node: Node): Value =
   return value
 
 proc evaluateFuncDecl(interpreter: Interpreter, node: Node) =
+  if interpreter.functionDeclarations.hasKey(node.fnName):
+    raise newException(ValueError, "A function with the name '" & node.fnName & "' is already defined.")
+
   let function = proc(environment: Environment, args: Value): Value =
     let prevEnv = interpreter.environment
     interpreter.environment = newEnvironment(if prevEnv.parent != nil: prevEnv.parent else: interpreter.globals)
@@ -488,17 +501,54 @@ proc evaluateForStmt(interpreter: Interpreter, node: Node): Value =
       if node.forLoopVars.len != 1:
         raise newException(ValueError, "Range iteration requires exactly one loop variable")
       
-      for i in startVal.intValue..endVal.intValue: # wow the syntax is indentical where could i have gotten that from
-        if i == startVal.intValue:
-          interpreter.environment.define(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
-        else:
-          interpreter.environment.set(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
-        for stmt in node.forLoopBody:
-          discard interpreter.evaluate(stmt)
+      let rangeStart = startVal.intValue
+      let rangeEnd = endVal.intValue
+      let reverse = rangeStart > rangeEnd
+
+      if reverse:
+        for i in countdown(startVal.intValue, endVal.intValue):
+          if i == startVal.intValue:
+            interpreter.environment.define(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+          else:
+            interpreter.environment.set(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+          for stmt in node.forLoopBody:
+            discard interpreter.evaluate(stmt)
+      else:
+        for i in startVal.intValue..endVal.intValue: # wow the syntax is indentical where could i have gotten that from
+          if i == startVal.intValue:
+            interpreter.environment.define(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+          else:
+            interpreter.environment.set(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+          for stmt in node.forLoopBody:
+            discard interpreter.evaluate(stmt)
 
     else:
       let iterable = interpreter.evaluate(node.forLoopIterable)
       case iterable.kind
+      of vtRange:
+        if node.forLoopVars.len != 1:
+          raise newException(ValueError, "Range iteration requires one assignable loop variable")
+        
+        let rangeStart = iterable.rangeStart
+        let rangeEnd = iterable.rangeEnd
+        let reverse = rangeStart > rangeEnd
+
+        if reverse:
+          for i in countdown(iterable.rangeStart, iterable.rangeEnd):
+            if i == iterable.rangeStart:
+              interpreter.environment.define(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+            else:
+              interpreter.environment.set(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+            for stmt in node.forLoopBody:
+              discard interpreter.evaluate(stmt)
+        else:
+          for i in iterable.rangeStart..iterable.rangeEnd:
+            if i == iterable.rangeStart:
+              interpreter.environment.define(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+            else:
+              interpreter.environment.set(node.forLoopVars[0], Value(kind: vtInt, intValue: i))
+            for stmt in node.forLoopBody:
+              discard interpreter.evaluate(stmt)
       of vtTable:
         var isFirst = true
         # only get key if 1 var
@@ -629,11 +679,19 @@ proc evaluateIndexAccess(interpreter: Interpreter, node: Node): Value =
     else:
       return Value(kind: vtNil)  # Return nil for non-existent keys
   elif target.kind == vtArray:
-    if index.kind != vtInt:
-      raise newException(ValueError, "Array index must be an integer")
-    if index.intValue < 0 or index.intValue >= target.count:
-      raise newException(ValueError, "Array index out of bounds")
-    return target.arrayValue[index.intValue]
+    if index.kind == vtInt:
+      if index.intValue < 0 or index.intValue >= target.count:
+        raise newException(ValueError, "Array index out of bounds")
+      return target.arrayValue[index.intValue]
+    elif index.kind == vtRange: # slice
+      let startIndex = index.rangeStart
+      let endIndex = index.rangeEnd
+      if startIndex < 0 or endIndex >= target.count or startIndex > endIndex:
+        raise newException(ValueError, "Array slice index out of bounds")
+      let slice = target.arrayValue[startIndex..endIndex]
+      return Value(kind: vtArray, arrayValue: slice, count: slice.len)
+    else:
+      raise newException(ValueError, "Array index must be an integer or range")
   elif target.kind == vtString:
     if index.kind != vtInt:
       raise newException(ValueError, "String index must be an integer")
@@ -641,8 +699,10 @@ proc evaluateIndexAccess(interpreter: Interpreter, node: Node): Value =
       raise newException(ValueError, "String index out of bounds")
     let charValue = target.stringValue[index.intValue]
     return Value(kind: vtString, stringValue: $charValue)
-  else: 
-    raise newException(ValueError, "Cannot index a non-table value")
+  elif target.kind == vtNil:
+    raise newException(ValueError, "Cannot index into a nil value")
+  else:
+    raise newException(ValueError, "Cannot index into type " & getValueType(target))
   
   
 
@@ -692,14 +752,18 @@ proc evaluate(interpreter: Interpreter, node: Node): Value =
     of nkIndexAccess:
       return interpreter.evaluateIndexAccess(node)
     of nkRange:
-      return Value(kind: vtNil) # only used in for loops; if it isnt then something is very very very wrong....
+      let startVal = interpreter.evaluate(node.rangeStart)
+      let endVal = interpreter.evaluate(node.rangeEnd)
+      if startVal.kind != vtInt or endVal.kind != vtInt:
+        raise newException(ValueError, "Range bounds must be integers")
+      return Value(kind: vtRange, rangeStart: startVal.intValue, rangeEnd: endVal.intValue)
     # else:
     #   raise newException(ValueError, "Unexpected node type: " & $node.kind)
   except BreakException:
     print("Broken out of loop")
     raise newException(BreakException, getCurrentExceptionMsg())
   except:
-    echo "Error: ", getCurrentExceptionMsg()
+    echo "Evaluation Error: ", getCurrentExceptionMsg()
     quit(-1)
     #return Value(kind: vtNil)
     
@@ -730,7 +794,7 @@ proc interpret*(interpreter: Interpreter, node: Node) =
           kind: nkIdentifier, identifierName: "main"), arguments: @[]))
     else:
       echo "No main function found, create a function named 'main' to run your program."
-      quit(0)
+      quit(-1)
   except:
     # let e = getCurrentException()
     let msg = getCurrentExceptionMsg()

@@ -42,9 +42,20 @@ proc throwParserError(parser: var Parser, message: string, got: bool = false) =
     errorMsg = errorMsg & " Got '" & token.lexeme & "' instead."
   raise newException(ParserError, errorMsg)
 
+proc throwParserWarning(parser: var Parser, message: string) =
+  let token = parser.peek()
+  var warningMsg = "Line " & $token.line & ", Col " & $token.column & ": " & message
+  echo "Warning: " & warningMsg
+
 proc consume(parser: var Parser, kind: TokenKind, message: string): Token =
   if parser.check(kind): return parser.advance()
   # otherwise..:
+  throwParserError(parser, message, true)
+
+proc consumeAny(parser: var Parser, kinds: seq[TokenKind], message: string): Token =
+  for kind in kinds:
+    if parser.check(kind):
+      return parser.advance()
   throwParserError(parser, message, true)
 
 proc parseExpression(parser: var Parser): Node
@@ -68,7 +79,12 @@ proc parseTable(parser: var Parser): Node =
   # although this is unsafe asf (but i kinda havent found too many issues yet soooo...)
   if not parser.check(tkBraceClose): 
     while true: # todo: make this less infinite
-      let key = parser.parseExpression() # todo: ensure only integer/string keys (although bool tables are funny)
+      let key = parser.parseExpression()
+      if key.kind notin [nkLiteral, nkIdentifier]:
+        throwParserError(parser, "Invalid table key. Only literals and identifiers are allowed.")
+      elif key.kind == nkLiteral:
+        if key.literalType notin ["int", "string"]:
+          throwParserError(parser, "Invalid table key. Only Integer and String literals are allowed as keys.")
       
       discard parser.consume(tkSymbol, "Expected ':' after table key.")
       if parser.tokens[parser.current - 1].lexeme != ":":
@@ -192,10 +208,9 @@ proc parseAdditive(parser: var Parser): Node =
     let right = parser.parseMultiplicative()
     left = Node(kind: nkBinaryExpr, left: left, right: right, operator: operator)
   
-  while parser.check(tkOperator) and parser.peek().lexeme == "..": # TODO: allow support for ranges as their own thing or something
-    # so i can do things like creating a range in a variable, or just use them in indexaccess and other stuff
+  while parser.check(tkOperator) and parser.peek().lexeme == "..":
     discard parser.advance() # consume ..
-    let right = parser.parseMultiplicative()
+    let right = parser.parseAdditive()
     left = Node(kind: nkRange, rangeStart: left, rangeEnd: right)
 
   return left
@@ -336,7 +351,7 @@ proc parseForStmt(parser: var Parser): Node =
   # because my keyword parser is BUGGY
   
   let iterable = parser.parseExpression()
-  
+
   discard parser.consume(tkBracketClose, "Expected ')' after for loop header.")
   discard parser.consume(tkBraceOpen, "Expected '{' to start for loop body.")
   

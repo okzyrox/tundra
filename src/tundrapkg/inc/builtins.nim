@@ -5,7 +5,7 @@ const printfunc = proc(env: Environment, args: Value): Value =
     for ix, item in args.argsValue:
       output &= $item
       if ix < args.argsValue.len - 1:
-        output &= ", "
+        output &= " "
   else:
     output = $args
   stdout.write(output)
@@ -17,7 +17,7 @@ const printlnfunc = proc(env: Environment, args: Value): Value =
     for ix, item in args.argsValue:
       output &= $item
       if ix < args.argsValue.len - 1:
-        output &= ", "
+        output &= " "
   else:
     output = $args
   stdout.write(output & "\n")
