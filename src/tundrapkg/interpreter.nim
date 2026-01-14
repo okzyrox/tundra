@@ -360,10 +360,10 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
           if index.intValue >= target.count:
             raise newException(ValueError, "Array index out of bounds")
 
-          target.arrayValue.delete(index)
+          target.arrayValue.delete(index.intValue)
           target.count -= 1
         else:
-          target.arrayValue.insert[value, index]
+          target.arrayValue.insert[value, index.intValue]
           target.count += 1
         interpreter.environment.set(targetName, target)
       else:
