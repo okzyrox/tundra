@@ -1,0 +1,47 @@
+0 / x
+
+interpreter:
+
+0 - auto restore environment variables after sub env
+0 - implicit type conversion
+0 - improve error message for interpreter:
+    0 - add line info
+    0 - add environment chain call stack 
+    0 - add suggestions (like variables or funcs that are available)
+0 - migrate builtins elsewhere (whilst not needing to include them)
+0 - add module support
+    0 - refer to note
+0 - better type system
+    0 - less hardcoding
+    0 - defined types
+
+0 - remake methods
+    0 - only allow specific methods for specific types of literals
+    0 - allow functions to modify arguments they are provided if they are `var`
+
+0 - general cleanup
+    0 - moving some things around can cause `parallel 'fields' iterator does not work for 'case' objects`
+    0 - rework command line arguments/commands
+    0 - rework error handling
+        0 - IntepreterError - base error for interpreter failures during runtime
+        0 - BreakExit - for breaking out of loops (if there is no better way)
+        0 - cleanup error handling in general (its in like 2 different places in the interpreter)
+
+interpreter - features:
+0 - builtins:
+    0 - file read/write functions (as string, to string)
+0 - tables:
+    0 - table key without need for quotations
+    0 - support for `.<key>` as alternative to index access
+
+0 - addition of enums:
+    0 - mapping values
+    0 - type support
+    0 - expression support
+
+tests:
+0 - more expansive tests over different cases
+0 - tests workflow for pull requests
+
+extensions - vscode:
+0 - embed builtins into extension as available autocompletions

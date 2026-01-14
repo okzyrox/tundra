@@ -31,7 +31,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.tundra",
-				"match": "\\b(if|else|while|for|return|func|fn|function|in|do|var|const)\\b"
+				"match": "\\b(if|else|while|for|return|func|fn|function|in|do|var|const|break)\\b"
 			}]
 		},
 		"strings": {

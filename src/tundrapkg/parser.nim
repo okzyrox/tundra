@@ -116,7 +116,6 @@ proc parseArray(parser: var Parser): Node =
   return Node(kind: nkArray, elements: elements, count: elements.len)
 
 proc parseIndexAccess(parser: var Parser, target: Node): Node =
-  # todo: need support for chaining index accesses (i.e. x[0][1][2])
   print "Parsing index access"
   let index = parser.parseExpression()
   discard parser.consume(tkSquareBracketClose, "Expected ']' after index.")

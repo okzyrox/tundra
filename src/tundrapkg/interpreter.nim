@@ -194,7 +194,40 @@ proc `$`(v: Value): string =
   else:
     "<unknown>"
 
-proc insert(t: Value, i: Value, v: Value) =
+proc delete(t: var Value, i: Value) =
+  case t.kind
+  of vtArray:
+    if i.kind != vtInt:
+      raise newException(ValueError, "Attempted to delete from array using non integer index " & $i)
+
+    if i.intValue < 0 or i.intValue >= t.count:
+      raise newException(ValueError, "Attempted to index array out of bounds")
+  
+    t.arrayValue.delete(i.intValue)
+    t.count -= 1
+  else:
+    raise newException(ValueError, "Attempted to delete from non-array value using " & $i)
+
+proc replace(t: var Value, i: Value, v: Value) =
+  case t.kind
+  of vtArray:
+    if i.kind != vtInt:
+      raise newException(ValueError, "Attempted to replace in array using non integer index " & $i)
+
+    if i.intValue < 0 or i.intValue >= t.count:
+      raise newException(ValueError, "Attempted to index array out of bounds")
+  
+    t.arrayValue[i.intValue] = v
+  of vtTable:
+    case t.kind
+    of vtString, vtInt:
+      t.tableValue[i] = v
+    else:
+      raise newException(ValueError, "Attempted to replace in table using non-string/int key " & $i)
+  else:
+    raise newException(ValueError, "Attempted to replace in non-array value using " & $i & " to " & $v)
+
+proc insert(t: var Value, i: Value, v: Value) =
   case t.kind
   of vtArray:
     if i.kind != vtInt:
@@ -204,11 +237,15 @@ proc insert(t: Value, i: Value, v: Value) =
       raise newException(ValueError, "Attempted to index array out of bounds")
   
     if v.kind == vtNil:
-      t.arrayValue.delete(i.intValue)
-      t.count -= 1
+      t.delete(i)
     else:
-      t.arrayValue.insert(i.intValue, v)
+      t.arrayValue.insert(v, i.intValue)
       t.count += 1
+  of vtTable:
+    if i.kind == vtString or i.kind == vtInt:
+      t.tableValue[i] = v
+    else:
+      raise newException(ValueError, "Attempted to insert into table using non-string/int key " & $i)
   else:
     raise newException(ValueError, "Attempted to insert into non-array value using " & $i & " to " & $v)
 
@@ -366,17 +403,8 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
       let index = interpreter.evaluate(node.left.index)
       let value = interpreter.evaluate(node.right)
 
-      if target.kind == vtTable:
-        target.tableValue[index] = value
-        interpreter.environment.set(targetName, target)
-      elif target.kind == vtArray:
-        if index.kind != vtInt:
-          raise newException(ValueError, "Cannot index assign to array using non integer index")
-
-        target.insert(index, value)
-        interpreter.environment.set(targetName, target)
-      else:
-        raise newException(ValueError, "Cannot index assign to " & $target.kind)
+      target.replace(index, value)
+      interpreter.environment.set(targetName, target)
       
       return value
     else:
@@ -384,6 +412,7 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
   else:
     raise newException(ValueError, "Invalid operator for types " & 
       getValueType(left) & " and " & getValueType(right) & "are not compatible with " & node.operator)
+  
 
 proc evaluateVarDecl(interpreter: Interpreter, node: Node): Value =
   let value = interpreter.evaluate(node.value)
