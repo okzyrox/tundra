@@ -342,18 +342,33 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
       if node.left.target.kind != nkIdentifier:
         raise newException(ValueError, "Cannot to index assign to something that is not an indentifier")
       
-      let tableName = node.left.target.identifierName
-      var target = interpreter.environment.get(tableName)
-      
-      if target.kind != vtTable:
-        raise newException(ValueError, "Cannot index assign to a non-table value")
-      
+      let targetName = node.left.target.identifierName
+      var target = interpreter.environment.get(targetName)
+
       let index = interpreter.evaluate(node.left.index)
       let value = interpreter.evaluate(node.right)
+
+      if target.kind == vtTable:
+        target.tableValue[index] = value
+        interpreter.environment.set(targetName, target)
+      elif target.kind == vtArray:
+        if index.kind != vtInt:
+          raise newException(ValueError, "Cannot index assign to array using non integer index")
+        if index.intValue < 0:
+          raise newException(ValueError, "Array index out of bounds")
+        if value.kind == vtNil:
+          if index.intValue >= target.arrayValue.count:
+            raise newException(ValueError, "Array index out of bounds")
+
+          target.arrayValue.delete(index)
+          target.arrayValue.count -= 1
+        else:
+          target.arrayValue.insert[value, index]
+          target.count += 1
+        interpreter.environment.set(targetName, target)
+      else:
+        raise newException(ValueError, "Cannot index assign to " & $target.kind)
       
-      target.tableValue[index] = value
-      
-      interpreter.environment.set(tableName, target)
       return value
     else:
       raise newException(ValueError, "Invalid assignment target")
