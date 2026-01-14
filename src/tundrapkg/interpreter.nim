@@ -194,6 +194,24 @@ proc `$`(v: Value): string =
   else:
     "<unknown>"
 
+proc insert(t: Value, i: Value, v: Value) =
+  case t.kind
+  of vtArray:
+    if i.kind != vtInt:
+      raise newException(ValueError, "Attempted to insert into array using non integer index " & $i)
+
+    if i.intValue < 0:
+      raise newException(ValueError, "Attempted to index array out of bounds")
+  
+    if v.kind == vtNil:
+      t.arrayValue.delete(i.intValue)
+      t.count -= 1
+    else:
+      t.arrayValue.insert(i.intValue, v)
+      t.count += 1
+  else:
+    raise newException(ValueError, "Attempted to insert into non-array value using " & $i & " to " & $v)
+
 proc evaluateIdentifier(interpreter: Interpreter, node: Node): Value =
   interpreter.environment.get(node.identifierName)
 
@@ -354,17 +372,8 @@ proc evaluateBinaryExpr(interpreter: Interpreter, node: Node): Value =
       elif target.kind == vtArray:
         if index.kind != vtInt:
           raise newException(ValueError, "Cannot index assign to array using non integer index")
-        if index.intValue < 0:
-          raise newException(ValueError, "Array index out of bounds")
-        if value.kind == vtNil:
-          if index.intValue >= target.count:
-            raise newException(ValueError, "Array index out of bounds")
 
-          target.arrayValue.delete(index.intValue)
-          target.count -= 1
-        else:
-          target.arrayValue.insert[value, index.intValue]
-          target.count += 1
+        target.insert(index, value)
         interpreter.environment.set(targetName, target)
       else:
         raise newException(ValueError, "Cannot index assign to " & $target.kind)
