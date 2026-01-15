@@ -159,27 +159,30 @@ const appendfunc = proc(env: Environment, args: Value): Value =
 
   return Value(kind: vtNil)
 
-proc initializeGlobals*(interpreter: Interpreter) =
-  interpreter.globals.define("print", Value(kind: vtFunc, funcValue: printfunc)) ## no new line
-  interpreter.globals.define("println", Value(kind: vtFunc, funcValue: printlnfunc))
-  interpreter.globals.define("read", Value(kind: vtFunc, funcValue: readfunc)) ## same line read
-  interpreter.globals.define("readln", Value(kind: vtFunc, funcValue: readlnfunc)) ## new line read
-  interpreter.globals.define("assert", Value(kind: vtFunc, funcValue: assertfunc)) 
-  interpreter.globals.define("typeof", Value(kind: vtFunc, funcValue: typeoffunc)) ## get type of value
-  interpreter.globals.define("len", Value(kind: vtFunc, funcValue: lenfunc))
-
+const FUNCTIONS = [
+  # io
+  ("print", printfunc), ## no new line
+  ("println", printlnfunc),
+  ("read", readfunc), ## same line read
+  ("readln", readlnfunc), ## new line read
   # conversions
-  interpreter.globals.define("tostring", Value(kind: vtFunc, funcValue: tostringfunc))
-  interpreter.globals.define("tonumber", Value(kind: vtFunc, funcValue: tonumberfunc))
-  interpreter.globals.define("toint", Value(kind: vtFunc, funcValue: tointfunc))
-  interpreter.globals.define("tofloat", Value(kind: vtFunc, funcValue: tofloatfunc))
-
-  # maths
-
+  ("tostring", tostringfunc),
+  ("toint", tointfunc),
+  ("tofloat", tofloatfunc),
+  ("tonumber", tonumberfunc),
+  # misc
+  ("assert", assertfunc),
+  ("typeof", typeoffunc), ## get type of value
+  ("len", lenfunc),
   # array
-  interpreter.globals.define("append", Value(kind: vtFunc, funcValue: appendfunc))
+  ("append", appendfunc)
+]
 
-  # global vars
+proc initializeGlobals*(interpreter: Interpreter) =
+  for i, (funcName, funcProc) in FUNCTIONS:
+    interpreter.globals.define(funcName, Value(kind: vtFunc, funcValue: funcProc))
+
+  # Globals
   interpreter.globals.define("_TUNDRA_VERSION", Value(kind: vtString, stringValue: utils.TUNDRA_VERSION))
   interpreter.globals.define("_TUNDRA_COMMIT", Value(kind: vtString, stringValue: utils.TUNDRA_COMMIT))
 
